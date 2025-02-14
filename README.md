@@ -24,7 +24,7 @@ cd theoforgeBackend
 ```
 
 2. Setting up fastAPI to run locally.  (For windows users)
-
+```
 Make sure Python is installed
 
 Create virtual enviornment for managing dependencies.
@@ -41,6 +41,7 @@ install fast api
 go to right dir and run it
 ->cd tests
 ->fastapi dev main.py
+```
 
 ## Development
 
