@@ -48,4 +48,4 @@ jobs:
       with:
         context: .  # Use the current directory as the build context
         push: true  # Push the image to Docker Hub after building
-        tags: tgonz67/theoforgeBackend:${{ env.IMAGE_TAG }}  # Use the appropriate Docker image and tag
+        tags: tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}  # Use the appropriate Docker image and tag
