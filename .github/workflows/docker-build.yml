@@ -44,7 +44,7 @@ jobs:
         fi
 
     - name: Build and push Docker image
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         context: .  # Use the current directory as the build context
         push: true  # Push the image to Docker Hub after building
