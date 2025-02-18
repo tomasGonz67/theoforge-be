@@ -53,3 +53,6 @@ Built with:
 - PostgreSQL
 - SQLAlchemy
 - JWT authentication 
+
+### Reference
+https://github.com/kaw393939/user_management

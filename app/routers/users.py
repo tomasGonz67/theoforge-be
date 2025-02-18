@@ -1,9 +1,11 @@
 # User-related endpoints
 from fastapi import APIRouter, Depends
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter()
 
-# TODO: GET /users/ - List users
+@router.get("/users")
+def get_users():
+    return {"message": "List of users"}
 # TODO: POST /users/ - Create user
 # TODO: GET /users/{user_id} - Get user
 # TODO: PUT /users/{user_id} - Update user
