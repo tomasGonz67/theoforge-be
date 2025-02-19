@@ -10,7 +10,7 @@ app = FastAPI(
 #root api. base backend is hit. it returns this message.
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the FastAPI app beast!"}
+    return {"message": "Welcome to the FastAPI app! This is a CI/CD test."}
 
 app.include_router(users.router)
 
