@@ -1,5 +1,5 @@
 # User-related endpoints
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Form, Depends
 #import jwt
 
 router = APIRouter()
@@ -8,10 +8,10 @@ router = APIRouter()
 def get_users():
     return {"message": "List of users"}
 
-
 @router.post("/users")
-def create_access_token(data: dict):
-    return dict
+def create_access_token(name: str = Form(...), email: str = Form(...)):
+    # Create the access token logic goes here
+    return {"name": name, "email": email}
 
 ###potential code for generating jwt###
     #expiration_time = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
