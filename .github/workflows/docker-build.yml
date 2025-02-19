@@ -36,7 +36,7 @@ jobs:
       id: set_tag
       run: |
         if [[ $GITHUB_REF == 'refs/heads/dev' ]]; then
-          echo "IMAGE_TAG=development" >> $GITHUB_ENV
+          echo "IMAGE_TAG=dev" >> $GITHUB_ENV
         elif [[ $GITHUB_REF == 'refs/heads/qa' ]]; then
           echo "IMAGE_TAG=qa" >> $GITHUB_ENV
         elif [[ $GITHUB_REF == 'refs/heads/main' ]]; then
