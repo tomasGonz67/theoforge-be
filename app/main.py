@@ -1,5 +1,5 @@
 # Main FastAPI application entry point
-from routers import users
+from app.routers import users, auth
 from fastapi import FastAPI
 
 #initializes fastAPI
@@ -15,6 +15,7 @@ def read_root():
     return {"message": "Welcome to the FastAPI app! This is a CI/CD test."}
 
 app.include_router(users.router)
+app.include_router(auth.router)
 
 # TODO: Include routers
 # TODO: Add middleware

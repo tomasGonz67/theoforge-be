@@ -1,10 +1,11 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field
+from typing import List
 
 class Settings(BaseSettings):
     # Database configuration
     database_url: str = Field(
-        default='postgresql+asyncpg://user:password@localhost/authdb',
+        default='postgresql+asyncpg://postgres:postgres@localhost:5432/theoforge_dev',
         description="Database connection URL"
     )
     
@@ -20,6 +21,18 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(
         default=30,
         description="Access token expiration in minutes"
+    )
+
+    # Login configuration
+    max_login_attempts: int = Field(
+        default=5,
+        description="Maximum number of failed login attempts before account lockout"
+    )
+
+    # CORS configuration
+    backend_cors_origins: List[str] = Field(
+        default=["http://localhost:3000"],
+        description="List of origins that can access the API"
     )
 
     class Config:
