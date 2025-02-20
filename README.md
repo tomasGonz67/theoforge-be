@@ -38,7 +38,7 @@ python -m venv venv
 .\venv\Scripts\activate
 
 # Linux/Mac
-python3 -m venv venv
+python3.10 -m venv venv
 source venv/bin/activate
 ```
 
@@ -62,6 +62,9 @@ Then edit `.env` with your specific configuration:
 - Run database migrations:
 ```bash
 alembic upgrade head
+
+# if greenlet error
+SQLALCHEMY_SILENCE_UBER_WARNING=1 DATABASE_URL="postgresql+psycopg2://postgres:your_password@localhost:5432/theoforge_dev" alembic upgrade head
 ```
 
 ## Running the Application
