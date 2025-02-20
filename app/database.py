@@ -1,10 +1,10 @@
-# Database configuration and session management
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 Base = declarative_base()
 
 class Database:
+    """Handles database connections and sessions."""
     _engine = None
     _session_factory = None
 
@@ -16,12 +16,10 @@ class Database:
             cls._session_factory = sessionmaker(
                 bind=cls._engine, class_=AsyncSession, expire_on_commit=False, future=True
             )
-    
+
     @classmethod
     def get_session(cls):
-        """Get a new session."""
+        """Returns the session factory, ensuring it's initialized."""
         if cls._session_factory is None:
-            raise ValueError("Database not initialized")
-        return cls._session_factory()
-
-# TODO: Database URL configuration
+            raise ValueError("Database not initialized. Call `initialize()` first.")
+        return cls._session_factory

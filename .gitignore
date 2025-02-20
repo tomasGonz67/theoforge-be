@@ -40,4 +40,5 @@ user_management/
 *.log
 
 # Database
-*.sqlite3 
+*.sqlite3
+*.db
