@@ -9,13 +9,15 @@ This Python test file utilizes pytest to manage database states and HTTP clients
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock
 import uuid
-
-# Third-party imports
+import os
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 from faker import Faker
+from sqlalchemy import text
 
 # Application-specific imports
 from app.main import app
@@ -28,17 +30,58 @@ from app.services.auth import create_access_token
 fake = Faker()
 
 settings = get_settings()
-# Use a separate test database URL
-TEST_DATABASE_URL = settings.database_url.replace("postgresql://", "postgresql+asyncpg://")
-if not TEST_DATABASE_URL.endswith("_test"):
-    TEST_DATABASE_URL += "_test"
+# First connect to default postgres database to create test database
+POSTGRES_DATABASE_URL = 'postgresql+asyncpg://postgres:postgres123@localhost/postgres'
+TEST_DATABASE_URL = 'postgresql+asyncpg://postgres:postgres123@localhost/theoforge_test'
 
-engine = create_async_engine(TEST_DATABASE_URL)
-AsyncTestingSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-AsyncSessionScoped = scoped_session(AsyncTestingSessionLocal)
+postgres_engine = create_async_engine(
+    POSTGRES_DATABASE_URL,
+    isolation_level="AUTOCOMMIT"
+)
 
-@pytest.fixture(scope="function")
+test_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    poolclass=NullPool,
+    isolation_level="AUTOCOMMIT"
+)
+
+AsyncTestingSessionLocal = sessionmaker(
+    test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def create_test_db():
+    """Create test database."""
+    async with postgres_engine.connect() as conn:
+        await conn.execute(text("DROP DATABASE IF EXISTS theoforge_test"))
+        await conn.execute(text("CREATE DATABASE theoforge_test"))
+    await postgres_engine.dispose()
+
+@pytest_asyncio.fixture(scope="function")
+async def setup_database(create_test_db):
+    """Set up the database for testing."""
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session(setup_database) -> AsyncSession:
+    """Create a fresh database session for a test."""
+    async with AsyncTestingSessionLocal() as session:
+        yield session
+        await session.rollback()
+        await session.close()
+
+@pytest_asyncio.fixture(scope="function")
 async def async_client(db_session):
+    """Create an async test client."""
     async with AsyncClient(app=app, base_url="http://testserver") as client:
         app.dependency_overrides[get_db] = lambda: db_session
         try:
@@ -46,110 +89,99 @@ async def async_client(db_session):
         finally:
             app.dependency_overrides.clear()
 
-@pytest.fixture(scope="session", autouse=True)
-def initialize_database():
-    try:
-        Database.initialize(TEST_DATABASE_URL)
-    except Exception as e:
-        pytest.fail(f"Failed to initialize the database: {str(e)}")
-
-@pytest.fixture(scope="function", autouse=True)
-async def setup_database():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
-
-@pytest.fixture(scope="function")
-async def db_session(setup_database):
-    async with AsyncSessionScoped() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
-
-@pytest.fixture(scope="function")
-async def locked_user(db_session):
-    user_data = {
-        "email": fake.email(),
-        "hashed_password": hash_password("TestPassword123!"),
-        "role": UserRole.USER,
-        "email_verified": False,
-        "is_locked": True,
-        "failed_login_attempts": settings.max_login_attempts,
-    }
-    user = User(**user_data)
+@pytest_asyncio.fixture
+async def regular_user(db_session: AsyncSession) -> User:
+    """Create a regular test user."""
+    user = User(
+        email=fake.email(),
+        hashed_password=hash_password("testpassword123"),
+        role=UserRole.USER,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
     db_session.add(user)
     await db_session.commit()
+    await db_session.refresh(user)
     return user
 
-@pytest.fixture(scope="function")
-async def regular_user(db_session):
-    user_data = {
-        "email": fake.email(),
-        "hashed_password": hash_password("TestPassword123!"),
-        "role": UserRole.USER,
-        "email_verified": False,
-        "is_locked": False,
-    }
-    user = User(**user_data)
+@pytest_asyncio.fixture
+async def locked_user(db_session: AsyncSession) -> User:
+    """Create a locked test user."""
+    user = User(
+        email=fake.email(),
+        hashed_password=hash_password("testpassword123"),
+        role=UserRole.USER,
+        is_locked=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
     db_session.add(user)
     await db_session.commit()
+    await db_session.refresh(user)
     return user
 
-@pytest.fixture(scope="function")
-async def verified_user(db_session):
-    user_data = {
-        "email": fake.email(),
-        "hashed_password": hash_password("TestPassword123!"),
-        "role": UserRole.USER,
-        "email_verified": True,
-        "is_locked": False,
-    }
-    user = User(**user_data)
+@pytest_asyncio.fixture
+async def verified_user(db_session: AsyncSession) -> User:
+    """Create a verified test user."""
+    user = User(
+        email=fake.email(),
+        hashed_password=hash_password("testpassword123"),
+        role=UserRole.USER,
+        email_verified=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
     db_session.add(user)
     await db_session.commit()
+    await db_session.refresh(user)
     return user
 
-@pytest.fixture(scope="function")
-async def admin_user(db_session):
-    user_data = {
-        "email": "admin@example.com",
-        "hashed_password": hash_password("AdminPass123!"),
-        "role": UserRole.ADMIN,
-        "email_verified": True,
-        "is_locked": False,
-    }
-    user = User(**user_data)
+@pytest_asyncio.fixture
+async def admin_user(db_session: AsyncSession) -> User:
+    """Create an admin test user."""
+    user = User(
+        email=fake.email(),
+        hashed_password=hash_password("testpassword123"),
+        role=UserRole.ADMIN,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
     db_session.add(user)
     await db_session.commit()
+    await db_session.refresh(user)
     return user
 
-@pytest.fixture(scope="function")
-async def multiple_users(db_session):
+@pytest_asyncio.fixture
+async def multiple_users(db_session: AsyncSession) -> list[User]:
+    """Create multiple test users."""
     users = []
-    for _ in range(50):
-        user_data = {
-            "email": fake.email(),
-            "hashed_password": hash_password("TestPassword123!"),
-            "role": UserRole.USER,
-            "email_verified": False,
-            "is_locked": False,
-        }
-        user = User(**user_data)
-        db_session.add(user)
+    for _ in range(3):
+        user = User(
+            email=fake.email(),
+            hashed_password=hash_password("testpassword123"),
+            role=UserRole.USER,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
         users.append(user)
+    
+    for user in users:
+        db_session.add(user)
     await db_session.commit()
+    
+    for user in users:
+        await db_session.refresh(user)
+    
     return users
 
 @pytest.fixture(scope="function")
-def admin_token(admin_user):
+async def admin_token(admin_user):
+    """Create an admin token."""
     token_data = {"sub": str(admin_user.id), "role": admin_user.role.name}
     return create_access_token(data=token_data, expires_delta=timedelta(minutes=30))
 
 @pytest.fixture(scope="function")
-def user_token(regular_user):
+async def user_token(regular_user):
+    """Create a user token."""
     token_data = {"sub": str(regular_user.id), "role": regular_user.role.name}
     return create_access_token(data=token_data, expires_delta=timedelta(minutes=30)) 

@@ -28,6 +28,8 @@ class UserResponse(UserBase):
     updated_at: datetime
 
 class LoginRequest(BaseModel):
+    model_config = ConfigDict(from_attributes=True) 
+    
     email: str = Field(
         ...,
         json_schema_extra={"example": "user@example.com"}
@@ -38,6 +40,8 @@ class LoginRequest(BaseModel):
     )
 
 class TokenResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     access_token: str
     token_type: str = "bearer"
 

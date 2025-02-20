@@ -35,9 +35,10 @@ class Settings(BaseSettings):
         description="List of origins that can access the API"
     )
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = 'utf-8'
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8"
+    }
 
 # Create settings instance
 settings = Settings()
