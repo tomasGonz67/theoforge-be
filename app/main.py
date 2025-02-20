@@ -3,18 +3,23 @@ from app.routers import users, auth
 from fastapi import FastAPI
 from app.database import Database
 from settings.config import settings
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize database
+    Database.initialize(settings.database_url)
+    yield
+    # Shutdown: Add cleanup if needed
+    pass
 
 #initializes fastAPI
 app = FastAPI(
     title="User Management API",
     description="A simplified user management system",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
-
-# Initialize database on startup
-@app.on_event("startup")
-def startup_event():
-    Database.initialize(settings.database_url)
 
 #root api. base backend is hit. it returns this message.
 @app.get("/")

@@ -1,19 +1,24 @@
 # Pydantic models for request/response validation
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
 from app.models.user import UserRole
 
 class UserBase(BaseModel):
-    email: EmailStr = Field(..., example="user@example.com")
+    model_config = ConfigDict(from_attributes=True)
+    
+    email: EmailStr = Field(
+        ...,
+        json_schema_extra={"example": "user@example.com"}
+    )
     role: UserRole = Field(default=UserRole.USER)
 
-    class Config:
-        from_attributes = True
-
 class UserCreate(UserBase):
-    password: str = Field(..., example="strongpassword123")
+    password: str = Field(
+        ...,
+        json_schema_extra={"example": "strongpassword123"}
+    )
 
 class UserResponse(UserBase):
     id: UUID
@@ -23,8 +28,14 @@ class UserResponse(UserBase):
     updated_at: datetime
 
 class LoginRequest(BaseModel):
-    email: str = Field(..., example="user@example.com")
-    password: str = Field(..., example="strongpassword123")
+    email: str = Field(
+        ...,
+        json_schema_extra={"example": "user@example.com"}
+    )
+    password: str = Field(
+        ...,
+        json_schema_extra={"example": "strongpassword123"}
+    )
 
 class TokenResponse(BaseModel):
     access_token: str
