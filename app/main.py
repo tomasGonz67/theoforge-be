@@ -16,7 +16,7 @@ async def startup():
     Database.initialize(settings.database_url)
 
 #root api. base backend is hit. it returns this message.
-@app.get("/API")
+@app.get("/")
 def read_root():
     return {"message": "Welcome to the FastAPI app! This is a CI/CD test."}
 
