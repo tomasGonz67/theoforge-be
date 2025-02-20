@@ -18,5 +18,4 @@ def decode_token(token: str) -> Dict | None:
     except jwt.PyJWTError:
         return None
 
-# TODO: Password hashing functions
 # TODO: User authentication 
