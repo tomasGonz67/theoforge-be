@@ -8,7 +8,8 @@ from app.database import Database
 app = FastAPI(
     title="User Management API",
     description="A simplified user management system",
-    version="1.0.0"
+    version="1.0.0",
+    root_path="/API"
 )
 
 @app.on_event("startup")
