@@ -8,8 +8,7 @@ from app.database import Database
 app = FastAPI(
     title="User Management API",
     description="A simplified user management system",
-    version="1.0.0",
-    root_path="/API"
+    version="1.0.0"
 )
 
 @app.on_event("startup")
@@ -17,7 +16,7 @@ async def startup():
     Database.initialize(settings.database_url)
 
 #root api. base backend is hit. it returns this message.
-@app.get("/")
+@app.get("/API")
 def read_root():
     return {"message": "Welcome to the FastAPI app! This is a CI/CD test."}
 
