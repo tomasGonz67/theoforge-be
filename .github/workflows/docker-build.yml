@@ -1,0 +1,51 @@
+name: Docker Build for Different Environments
+
+on:
+  push:
+    branches:
+      - dev
+      - qa
+      - main  # Assuming 'main' is used for prod
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v3
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Set Docker image tag based on branch
+      id: set_tag
+      run: |
+        if [[ $GITHUB_REF == 'refs/heads/dev' ]]; then
+          echo "IMAGE_TAG=dev" >> $GITHUB_ENV
+        elif [[ $GITHUB_REF == 'refs/heads/qa' ]]; then
+          echo "IMAGE_TAG=qa" >> $GITHUB_ENV
+        elif [[ $GITHUB_REF == 'refs/heads/main' ]]; then
+          echo "IMAGE_TAG=prod" >> $GITHUB_ENV
+        fi
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: .  # Use the current directory as the build context
+        push: true  # Push the image to Docker Hub after building
+        tags: tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}  # Use the appropriate Docker image and tag
