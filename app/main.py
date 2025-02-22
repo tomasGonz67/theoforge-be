@@ -1,19 +1,32 @@
-# Main FastAPI application entry point
-from routers import users
 from fastapi import FastAPI
-#initializes fastAPI
-app = FastAPI(
-    title="User Management API",
-    description="A simplified user management system",
-    version="1.0.0"
-)
-#root api. base backend is hit. it returns this message.
+from sqlalchemy import create_engine, text
+import os
+
+app = FastAPI(title="Hello World API")
+
+# Get database URL from environment variable
+database_url = os.getenv("DATABASE_URL")
+engine = create_engine(database_url) if database_url else None
+
 @app.get("/")
-def read_root():
-    return {"message": "Welcome to the FastAPI app! This is a CI/CD test."}
+async def root():
+    return {"message": "Hello World"}
 
-app.include_router(users.router)
-
-# TODO: Include routers
-# TODO: Add middleware
-# TODO: Add startup and shutdown events 
+@app.get("/health")
+async def health():
+    if engine:
+        try:
+            # Try to connect to the database
+            with engine.connect() as connection:
+                result = connection.execute(text("SELECT 1"))
+                result.fetchone()
+            db_status = "connected"
+        except Exception as e:
+            db_status = f"error: {str(e)}"
+    else:
+        db_status = "no database configured"
+    
+    return {
+        "status": "healthy",
+        "database": db_status
+    } 
