@@ -30,7 +30,7 @@ The following services will be available:
 - **PostgreSQL Database**:
   - Host: localhost
   - Port: 5432
-  - Database: theoforge_dev
+  - Database: theoforge_qa
   - Username: user
   - Password: password
 
@@ -49,7 +49,7 @@ To connect to PostgreSQL using pgAdmin:
    - Name: Any name you prefer
    - Host: postgres
    - Port: 5432
-   - Database: theoforge_dev
+   - Database: theoforge_qa
    - Username: user
    - Password: password
 
