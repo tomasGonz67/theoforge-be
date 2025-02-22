@@ -1,36 +1,32 @@
-# Main FastAPI application entry point
-from app.routers import users, auth
 from fastapi import FastAPI
-from app.database import Database
-from settings.config import settings
-from contextlib import asynccontextmanager
+from sqlalchemy import create_engine, text
+import os
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup: Initialize database
-    Database.initialize(settings.database_url)
-    yield
-    # Shutdown: Add cleanup if needed
-    pass
+app = FastAPI(title="Hello World API")
 
-#initializes fastAPI
-app = FastAPI(
-    docs_url="/docs",
-    title="User Management API",
-    description="A simplified user management system",
-    version="1.0.0",
-    lifespan=lifespan
-)
+# Get database URL from environment variable
+database_url = os.getenv("DATABASE_URL")
+engine = create_engine(database_url) if database_url else None
 
-#root api. base backend is hit. it returns this message.
 @app.get("/")
-def read_root():
-    return {"message": "Welcome to the FastAPI app! This is a CI/CD test."}
+async def root():
+    return {"message": "Hello World"}
 
-app.include_router(users.router)
-app.include_router(auth.router)
-
-
-# TODO: Include routers
-# TODO: Add middleware
-# TODO: Add startup and shutdown events 
+@app.get("/health")
+async def health():
+    if engine:
+        try:
+            # Try to connect to the database
+            with engine.connect() as connection:
+                result = connection.execute(text("SELECT 1"))
+                result.fetchone()
+            db_status = "connected"
+        except Exception as e:
+            db_status = f"error: {str(e)}"
+    else:
+        db_status = "no database configured"
+    
+    return {
+        "status": "healthy",
+        "database": db_status
+    } 

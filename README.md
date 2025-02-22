@@ -1,116 +1,79 @@
 # TheoForge Backend
 
-A FastAPI-based backend service for user management.
+A FastAPI-based backend service with PostgreSQL database and pgAdmin for database management.
 
-## Project Structure
-```
-app/
-├── main.py          # Application entry point
-├── database.py      # Database configuration
-├── dependencies.py  # Database sessions, auth, and access control
-├── models/         # Database models
-├── routers/        # API endpoints
-├── schemas/        # Data validation
-└── services/       # Business logic
+### Prerequisites
+- Docker and Docker Compose
+- Git
 
-alembic/            # Database migrations
-tests/              # Test files
-```
-
-## Prerequisites
-
-- Python 3.10 or higher
-- PostgreSQL 16
-- pgAdmin 4 (optional, for database management)
-
-## Setup
+### Setup and Running
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/tomasGonz67/theoforgeBackend.git
-cd theoforgeBackend
+git clone https://github.com/tomasGonz67/theoforge-be.git
+cd theoforge-be
 ```
 
-2. Create and activate virtual environment:
+2. Start the services:
 ```bash
-# Windows
-python -m venv venv
-.\venv\Scripts\activate
-
-# Linux/Mac
-python3.10 -m venv venv
-source venv/bin/activate
+docker-compose up --build
 ```
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+### Services
 
-4. Set up environment variables:
-Copy `.env.example` to `.env` and update the values:
-```bash
-cp .env.example .env
-```
-Then edit `.env` with your specific configuration:
-- Set your PostgreSQL password in the `DATABASE_URL`
-- Change `JWT_SECRET_KEY` to a secure random string
-- Adjust other settings as needed
+The following services will be available:
 
-5. Create database:
-- Using pgAdmin 4 or psql, create a new database named `theoforge_dev`
-- Run database migrations:
-```bash
-alembic upgrade head
+- **FastAPI Application**: http://localhost:8000
+  - API Documentation: http://localhost:8000/docs
+  - Health Check: http://localhost:8000/health
 
-# if greenlet error
-SQLALCHEMY_SILENCE_UBER_WARNING=1 DATABASE_URL="postgresql+psycopg2://postgres:your_password@localhost:5432/theoforge_dev" alembic upgrade head
-```
+- **PostgreSQL Database**:
+  - Host: localhost
+  - Port: 5432
+  - Database: theoforge_dev
+  - Username: user
+  - Password: password
 
-## Running the Application
+- **pgAdmin**:
+  - URL: http://localhost:5050
+  - Email: admin@example.com
+  - Password: adminpassword
 
-Start the FastAPI server:
-```bash
-uvicorn app.main:app --reload
-```
+### Database Connection in pgAdmin
 
-The server will start at `http://127.0.0.1:8000`
+To connect to PostgreSQL using pgAdmin:
 
-## API Documentation
-
-Once the server is running, you can access:
-- Swagger UI documentation: `http://127.0.0.1:8000/docs`
-- ReDoc documentation: `http://127.0.0.1:8000/redoc`
-
-### Available Endpoints
-
-- `POST /register` - Register a new user
-- `POST /token` - Login and get access token
-- `GET /users/me` - Get current user information (requires authentication)
+1. Access pgAdmin at http://localhost:5050
+2. Login with the credentials above
+3. Add a new server:
+   - Name: Any name you prefer
+   - Host: postgres
+   - Port: 5432
+   - Database: theoforge_dev
+   - Username: user
+   - Password: password
 
 ## Development
 
-Built with:
-- FastAPI - Framework
-- PostgreSQL - Database
-- SQLAlchemy - ORM with async support
-- Alembic - Database migrations
-- JWT - Authentication
-- Pydantic - Data validation
+The project uses:
+- FastAPI for the web framework
+- PostgreSQL for the database
+- pgAdmin for database management
+- Docker for containerization
 
-## Testing
+## API Endpoints
 
-Run tests using pytest:
-```bash
-pytest
+- `GET /`: Returns "Hello World"
+- `GET /health`: Health check endpoint that also verifies database connectivity
+
+## Project Structure
+
 ```
-
-## Contributing
-
-1. Create a new branch for your feature
-2. Make your changes
-3. Run tests
-4. Submit a pull request
-
-### Reference
-- [User Management](https://github.com/kaw393939/user_management)
+.
+├── app/
+│   └── main.py
+├── docker-compose.yml
+├── Dockerfile
+├── requirements.txt
+└── README.md
+``` 
