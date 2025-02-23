@@ -84,14 +84,20 @@ The project uses:
 │   │   └── user.py            
 │   ├── database.py            # Database configuration + session
 │   └── main.py                # FastAPI application
+├── alembic/                    # Database migrations
+│   ├── versions/              
+│   │   └── .gitkeep
+│   ├── env.py                
+│   └── script.py.mako        
 ├── tests/                      # Test suite
 │   ├── conftest.py            # Test fixtures + configuration
 │   ├── integration/           # Integration tests
 │   │   └── test_registration.py
 │   └── unit/                  # Unit tests
 │       └── test_user.py
-├── docker-compose.yml         # Docker services configuration
-├── Dockerfile                # API service dockerfile
-├── requirements.txt          # Python dependencies
+├── alembic.ini               
+├── docker-compose.yml         
+├── Dockerfile                
+├── requirements.txt          
 └── README.md                
 ``` 
