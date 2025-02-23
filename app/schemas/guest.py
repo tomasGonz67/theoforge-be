@@ -1,3 +1,4 @@
+# app/schemas/guest.py
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
@@ -15,7 +16,7 @@ class GuestUpdate(BaseModel):
     phone: Optional[str] = None
 
 class GuestOut(GuestBase):
-    id: int
+    id: str  # Use custom Guest ID format like GUEST-4821
 
     class Config:
-        from_attributes = True  # ✅ Updated for Pydantic V2
+        from_attributes = True  # For Pydantic V2
