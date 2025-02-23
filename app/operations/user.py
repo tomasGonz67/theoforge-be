@@ -48,10 +48,20 @@ class UserService:
         return await cls._fetch_user(session, nickname=nickname)
 
     @classmethod
+    async def count(cls, session: AsyncSession) -> int:
+        """Count total number of users. Used to determine if first user (admin)."""
+        query = select(func.count()).select_from(User)
+        result = await session.execute(query)
+        return result.scalar()
+
+    @classmethod
     async def create(cls, session: AsyncSession, user_data: Dict[str, str]) -> Optional[User]:
         """Create a new user with the provided data."""
         try:
+            # Validate user data
             validated_data = UserCreate(**user_data).model_dump()
+            
+            # Check for existing user
             existing_user = await cls.get_by_email(session, validated_data['email'])
             if existing_user:
                 logger.error("User with given email already exists.")
@@ -60,18 +70,21 @@ class UserService:
             # Hash password and remove plain password
             validated_data['hashed_password'] = hash_password(validated_data.pop('password'))
             
-            # Create new user instance
-            new_user = User(**validated_data)
-            
-            # Set role based on if first user
+            # Check if this is the first user BEFORE creating the instance
             user_count = await cls.count(session)
-            new_user.role = UserRole.ADMIN if user_count == 0 else UserRole.USER
+            role = UserRole.ADMIN if user_count == 0 else UserRole.USER
             
-            # First user (admin) gets auto-verified
-            new_user.email_verified = new_user.role == UserRole.ADMIN
+            # Create new user instance with determined role and verification
+            # First admin user should have email_verified=True
+            new_user = User(
+                **validated_data,
+                role=role,
+                email_verified=(role == UserRole.ADMIN)  # True for admin, False for regular users
+            )
             
             session.add(new_user)
             await session.commit()
+            await session.refresh(new_user)
             return new_user
 
         except ValidationError as e:
@@ -82,13 +95,6 @@ class UserService:
     async def register_user(cls, session: AsyncSession, user_data: Dict[str, str]) -> Optional[User]:
         """Register a new user. This is the main method to be used for registration."""
         return await cls.create(session, user_data)
-
-    @classmethod
-    async def count(cls, session: AsyncSession) -> int:
-        """Count total number of users. Used to determine if first user (admin)."""
-        query = select(func.count()).select_from(User)
-        result = await session.execute(query)
-        return result.scalar()
 
 """
 Changes made for registration implementation:
@@ -102,12 +108,14 @@ Changes made for registration implementation:
    - Email uniqueness validation
    - Password hashing
    - Automatic role assignment (first user = admin)
-   - Admin auto-verification
+   - Email verification handling:
+     * First admin user gets email_verified=True
+     * All other users start with email_verified=False
    - Basic error handling and logging
 
 3. Removed non-registration functionality:
    - Login and session management
    - Account locking and password reset
-   - Email verification (kept only verified flag)
+   - Email verification process (kept only verified flag)
    - Profile updates and deletion
 """

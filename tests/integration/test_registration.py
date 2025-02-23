@@ -8,6 +8,16 @@ from app.core.security import hash_password
 @pytest.mark.asyncio
 async def test_successful_registration(async_client: AsyncClient):
     """Test successful user registration with valid data."""
+    # First create an admin user
+    admin_data = {
+        "email": "admin@example.com",
+        "password": "SecurePass123!",
+        "first_name": "Admin",
+        "last_name": "User"
+    }
+    await async_client.post("/auth/register", json=admin_data)
+    
+    # Now test regular user registration
     user_data = {
         "email": "new.user@example.com",
         "password": "SecurePass123!",
@@ -182,6 +192,16 @@ async def test_registration_response_format(async_client: AsyncClient):
 @pytest.mark.asyncio
 async def test_successful_registration_with_provided_nickname(async_client: AsyncClient):
     """Test successful user registration with a provided nickname."""
+    # First create an admin user
+    admin_data = {
+        "email": "admin@example.com",
+        "password": "SecurePass123!",
+        "first_name": "Admin",
+        "last_name": "User"
+    }
+    await async_client.post("/auth/register", json=admin_data)
+    
+    # Now test regular user registration with nickname
     user_data = {
         "email": "new.user@example.com",
         "password": "SecurePass123!",
@@ -202,6 +222,16 @@ async def test_successful_registration_with_provided_nickname(async_client: Asyn
 @pytest.mark.asyncio
 async def test_successful_registration_with_auto_nickname(async_client: AsyncClient):
     """Test successful user registration with auto-generated nickname."""
+    # First create an admin user
+    admin_data = {
+        "email": "admin@example.com",
+        "password": "SecurePass123!",
+        "first_name": "Admin",
+        "last_name": "User"
+    }
+    await async_client.post("/auth/register", json=admin_data)
+    
+    # Now test regular user registration with auto nickname
     user_data = {
         "email": "new.user@example.com",
         "password": "SecurePass123!",

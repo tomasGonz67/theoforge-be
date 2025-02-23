@@ -86,6 +86,9 @@ Changes made for registration implementation:
    - Profile fields (bio, profile_picture_url, linkedin/github URLs)
    - Professional status fields (is_professional, status update time)
    - Login-specific fields (login attempts, lock status, last login)
-4. Role will be assigned during registration (first user = ADMIN, others = USER) as per reference implementation in user_service.py
+4. Role and verification handling:
+   - First user gets ADMIN role with email_verified=True
+   - Subsequent users get USER role with email_verified=False
+   - Email verification can be set via verify_email() method
 5. Kept only relevant methods (verify_email, has_role) 
 """
