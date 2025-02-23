@@ -1,16 +1,14 @@
-from builtins import ValueError, str
-from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional
 from datetime import datetime
-import uuid
-import re
-from app.models.user_model import UserRole
-from app.utils.nickname_gen import generate_nickname
+from typing import Optional
+from pydantic import BaseModel, EmailStr, Field, validator
+from uuid import UUID
+
+from app.models.user import UserRole
 
 class UserBase(BaseModel):
     """Base schema for User with common attributes."""
     email: EmailStr = Field(..., example="john.doe@example.com")
-    nickname: Optional[str] = Field(None, min_length=3, pattern=r'^[\w-]+$', example=generate_nickname())
+    nickname: Optional[str] = Field(None, min_length=3, pattern=r'^[\w-]+$')
     first_name: Optional[str] = Field(None, example="John")
     last_name: Optional[str] = Field(None, example="Doe")
     role: UserRole
@@ -22,6 +20,7 @@ class UserCreate(BaseModel):
     """Schema for user registration with password validation."""
     email: EmailStr = Field(..., example="john.doe@example.com")
     password: str = Field(..., min_length=8, example="SecurePass123!")
+    nickname: Optional[str] = Field(None, min_length=3, pattern=r'^[\w-]+$')
     first_name: Optional[str] = Field(None, example="John")
     last_name: Optional[str] = Field(None, example="Doe")
 
@@ -40,9 +39,20 @@ class UserCreate(BaseModel):
             raise ValueError("Password must contain at least one special character")
         return v
 
+    @validator("nickname", pre=True, always=True)
+    def generate_nickname(cls, v, values):
+        """Generate a nickname from email if not provided."""
+        if not v and "email" in values:
+            # Take the part before @ and remove special characters
+            email_name = values["email"].split("@")[0]
+            import re
+            nickname = re.sub(r'[^a-zA-Z0-9_-]', '', email_name)
+            return nickname
+        return v
+
 class UserResponse(UserBase):
     """Schema for user response after registration."""
-    id: uuid.UUID = Field(..., example=uuid.uuid4())
+    id: UUID
     email_verified: bool = Field(default=False)
     created_at: datetime
     updated_at: datetime
