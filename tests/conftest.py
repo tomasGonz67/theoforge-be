@@ -1,62 +1,61 @@
 """
-File: test_database_operations.py
+Test configuration and fixtures for the TheoForge Backend.
 
-Overview:
-This Python test file utilizes pytest to manage database states and HTTP clients for testing a web application built with FastAPI and SQLAlchemy. It includes detailed fixtures to mock the testing environment, ensuring each test is run in isolation with a consistent setup.
-
-Fixtures:
-- `async_client`: Manages an asynchronous HTTP client for testing interactions with the FastAPI application.
-- `db_session`: Handles database transactions to ensure a clean database state for each test.
-- User fixtures (`user`, `locked_user`, `verified_user`, etc.): Set up various user states to test different behaviors under diverse conditions.
-- `token`: Generates an authentication token for testing secured endpoints.
-- `initialize_database`: Prepares the database at the session start.
-- `setup_database`: Sets up and tears down the database before and after each test.
+This module provides pytest fixtures for:
+- Database session management
+- HTTP client setup
+- User fixtures for different test scenarios
 """
 
-# Standard library imports
-from builtins import Exception, range, str
-from datetime import timedelta
-from unittest.mock import AsyncMock, patch
+from datetime import datetime
 from uuid import uuid4
-
-# Third-party imports
+import os
 import pytest
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.pool import NullPool
 from faker import Faker
 
-# Application-specific imports
 from app.main import app
 from app.database import Base, Database
-from app.models.user_model import User, UserRole
-from app.dependencies import get_db, get_settings
-from app.utils.security import hash_password
-from app.utils.template_manager import TemplateManager
-from app.services.email_service import EmailService
-from app.services.jwt_service import create_access_token
+from app.models.user import User, UserRole
+from app.auth.dependencies import get_db
+from app.core.security import hash_password
 
 fake = Faker()
 
-settings = get_settings()
-TEST_DATABASE_URL = settings.database_url.replace("postgresql://", "postgresql+asyncpg://")
-engine = create_async_engine(TEST_DATABASE_URL, echo=settings.debug)
-AsyncTestingSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-AsyncSessionScoped = scoped_session(AsyncTestingSessionLocal)
+# same database URL as main app since we're running in Docker
+database_url = os.getenv("DATABASE_URL", "postgresql://user:password@postgres:5432/theoforge_dev")
+TEST_DATABASE_URL = database_url.replace("postgresql://", "postgresql+asyncpg://")
 
+# Create engine with NullPool to prevent connection reuse
+engine = create_async_engine(
+    TEST_DATABASE_URL,
+    poolclass=NullPool,
+    echo=True
+)
 
-@pytest.fixture
-def email_service():
-    # Assuming the TemplateManager does not need any arguments for initialization
-    template_manager = TemplateManager()
-    email_service = EmailService(template_manager=template_manager)
-    return email_service
+# Create session factory
+async_session_maker = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False
+)
 
+@pytest.fixture(scope="session", autouse=True)
+async def initialize_database():
+    """Initialize the database for testing."""
+    Database.initialize(database_url)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield engine
+    await engine.dispose()
 
-# this is what creates the http client for your api tests
 @pytest.fixture(scope="function")
 async def async_client(db_session):
+    """Provide an async HTTP client for testing API endpoints."""
     async with AsyncClient(app=app, base_url="http://testserver") as client:
         app.dependency_overrides[get_db] = lambda: db_session
         try:
@@ -64,31 +63,57 @@ async def async_client(db_session):
         finally:
             app.dependency_overrides.clear()
 
-@pytest.fixture(scope="session", autouse=True)
-def initialize_database():
-    try:
-        Database.initialize(settings.database_url)
-    except Exception as e:
-        pytest.fail(f"Failed to initialize the database: {str(e)}")
-
-# this function setup and tears down (drops tales) for each test function, so you have a clean database for each test.
 @pytest.fixture(scope="function", autouse=True)
 async def setup_database():
+    """Set up a clean database for each test."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine.begin() as conn:
-        # you can comment out this line during development if you are debugging a single test
-         await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+        await conn.run_sync(Base.metadata.drop_all)
 
 @pytest.fixture(scope="function")
 async def db_session(setup_database):
-    async with AsyncSessionScoped() as session:
+    """Provide a database session for each test."""
+    async with async_session_maker() as session:
         try:
             yield session
         finally:
             await session.close()
+
+@pytest.fixture(scope="function")
+async def user(db_session):
+    """Create a regular user for testing."""
+    user_data = {
+        "nickname": fake.user_name(),
+        "first_name": fake.first_name(),
+        "last_name": fake.last_name(),
+        "email": fake.email(),
+        "hashed_password": hash_password("SecurePass123!"),
+        "role": UserRole.USER,
+        "email_verified": False
+    }
+    user = User(**user_data)
+    db_session.add(user)
+    await db_session.commit()
+    return user
+
+@pytest.fixture(scope="function")
+async def admin_user(db_session):
+    """Create an admin user for testing."""
+    user_data = {
+        "nickname": "admin_user",
+        "email": "admin@example.com",
+        "first_name": "Admin",
+        "last_name": "User",
+        "hashed_password": hash_password("SecurePass123!"),
+        "role": UserRole.ADMIN,
+        "email_verified": True
+    }
+    user = User(**user_data)
+    db_session.add(user)
+    await db_session.commit()
+    return user
 
 @pytest.fixture(scope="function")
 async def locked_user(db_session):
@@ -103,23 +128,6 @@ async def locked_user(db_session):
         "email_verified": False,
         "is_locked": True,
         "failed_login_attempts": settings.max_login_attempts,
-    }
-    user = User(**user_data)
-    db_session.add(user)
-    await db_session.commit()
-    return user
-
-@pytest.fixture(scope="function")
-async def user(db_session):
-    user_data = {
-        "nickname": fake.user_name(),
-        "first_name": fake.first_name(),
-        "last_name": fake.last_name(),
-        "email": fake.email(),
-        "hashed_password": hash_password("MySuperPassword$1234"),
-        "role": UserRole.AUTHENTICATED,
-        "email_verified": False,
-        "is_locked": False,
     }
     user = User(**user_data)
     db_session.add(user)
@@ -180,21 +188,6 @@ async def users_with_same_role_50_users(db_session):
     await db_session.commit()
     return users
 
-@pytest.fixture
-async def admin_user(db_session: AsyncSession):
-    user = User(
-        nickname="admin_user",
-        email="admin@example.com",
-        first_name="John",
-        last_name="Doe",
-        hashed_password="securepassword",
-        role=UserRole.ADMIN,
-        is_locked=False,
-    )
-    db_session.add(user)
-    await db_session.commit()
-    return user
-
 # Configure a fixture for each type of user role you want to test
 @pytest.fixture(scope="function")
 def admin_token(admin_user):
@@ -219,8 +212,4 @@ def email_service():
         mock_service.send_user_email.return_value = None
         return mock_service
 
-"""
-Excluded from user_management conftest.py:
-- manager_token()
-- manager_user()
-"""
+
