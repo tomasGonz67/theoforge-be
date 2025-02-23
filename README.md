@@ -71,9 +71,27 @@ The project uses:
 ```
 .
 ├── app/
-│   └── main.py
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-└── README.md
+│   ├── auth/                    # Authentication components
+│   │   ├── dependencies.py      
+│   │   └── __init__.py
+│   ├── core/                    
+│   │   └── security.py         # Password hashing 
+│   ├── models/                  # Database models
+│   │   └── user.py            
+│   ├── schemas/                 # Pydantic schemas
+│   │   └── user.py            
+│   ├── operations/             # Business logic operations
+│   │   └── user.py            
+│   ├── database.py            # Database configuration + session
+│   └── main.py                # FastAPI application
+├── tests/                      # Test suite
+│   ├── conftest.py            # Test fixtures + configuration
+│   ├── integration/           # Integration tests
+│   │   └── test_registration.py
+│   └── unit/                  # Unit tests
+│       └── test_user.py
+├── docker-compose.yml         # Docker services configuration
+├── Dockerfile                # API service dockerfile
+├── requirements.txt          # Python dependencies
+└── README.md                
 ``` 
