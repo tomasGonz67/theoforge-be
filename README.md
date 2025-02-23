@@ -86,7 +86,7 @@ The project uses:
 │   └── main.py                # FastAPI application
 ├── alembic/                    # Database migrations
 │   ├── versions/              
-│   │   └── .gitkeep
+│   │   └── 
 │   ├── env.py                
 │   └── script.py.mako        
 ├── tests/                      # Test suite
