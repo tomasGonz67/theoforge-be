@@ -165,32 +165,6 @@ async def set_cookie(token_data: TokenResponse, response: Response):
     
     return {"message": "set-cookie test"}
 
-@app.get("/test-auth")
-async def test_auth(response: Response):
-    '''
-    Tests cookie creation for Swagger FastAPI as it does not support normal cookies
-
-        - Must run this before /auth in FastAPI localhost:8000
-    '''
-
-    # Create a token for testing
-    access_token = create_access_token(
-        data={"sub": "user@example.com", "role": "user role example"},
-        expires_delta=timedelta(minutes=30)
-    )
-    
-    # Set the cookie
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=False,
-        samesite="Lax"
-    )
-    
-    # Return the token for convenience
-    return {"access_token": access_token, "message": "Test cookie set, now try the /auth endpoint"}
-
 # When protecting certain routes using JWT authentication with the cookie
 @app.get("/auth")
 async def auth_route(access_token: str = Cookie(None)):
@@ -199,6 +173,7 @@ async def auth_route(access_token: str = Cookie(None)):
 
         - Uses encoded JWT in cookie for protected path check
     '''
+    
     if not access_token:
         raise HTTPException(status_code=401, detail="Unauthorized: No access token found")
 

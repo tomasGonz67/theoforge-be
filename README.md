@@ -16,8 +16,15 @@ cd theoforge-be
 
 2. Start the services:
 ```bash
-docker-compose up --build
+docker-compose up -d --build
 ```
+
+3. Install frontend dependencies and run:
+```bash
+cd frontend
+npm install
+npm run dev
+``` 
 
 ### Services
 
@@ -26,6 +33,8 @@ The following services will be available:
 - **FastAPI Application**: http://localhost:8000
   - API Documentation: http://localhost:8000/docs
   - Health Check: http://localhost:8000/health
+
+  **Frontend Application**: http://localhost:5173
 
 - **PostgreSQL Database**:
   - Host: localhost
@@ -65,15 +74,54 @@ The project uses:
 
 - `GET /`: Returns "Hello World"
 - `GET /health`: Health check endpoint that also verifies database connectivity
+- `GET /login`: Login Method #1 (Preferred - 2-step process): Basic login endpoint with example users_db data that creates JWT access token
+- `GET /login/cookie`: Login Method #2: Instantly sets cookie after creating access token and serves to frontend
+- `GET /simple-cookie-test`: Endpoint to create example test cookie
+- `GET /set-cookie`: Second step of Login Method #1: Endpoint to set cookie based on encoded access_token
+- `GET /auth`: Endpoint to authenticate user based on cookie and access_token for a protected path
+
 
 ## Project Structure
 
 ```
-.
-├── app/
-│   └── main.py
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-└── README.md
+theoforge-be
+   ├─ app
+   │  ├─ auth
+   │  │  ├─ dependencies.py
+   │  ├─ core
+   │  ├─ main.py
+   │  ├─ models
+   │  ├─ operations
+   │  ├─ routers
+   │  │  ├─ auth.py
+   │  ├─ schemas
+   │  │  ├─ token_schema.py
+   │  ├─ services
+   │  │  ├─ jwt_service.py
+   ├─ docker-compose.yml
+   ├─ Dockerfile
+   ├─ frontend
+   │  ├─ eslint.config.js
+   │  ├─ index.html
+   │  ├─ package-lock.json
+   │  ├─ package.json
+   │  ├─ public
+   │  │  └─ vite.svg
+   │  ├─ README.md
+   │  ├─ src
+   │  │  ├─ api.ts
+   │  │  ├─ App.css
+   │  │  ├─ App.jsx
+   │  │  ├─ assets
+   │  │  │  └─ react.svg
+   │  │  ├─ components
+   │  │  │  ├─ Dashboard.tsx
+   │  │  │  └─ Login.tsx
+   │  │  ├─ index.css
+   │  │  └─ main.jsx
+   │  └─ vite.config.js
+   ├─ README.md
+   ├─ requirements.txt
+   └─ settings
+      ├─ config.py
 ``` 
