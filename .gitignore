@@ -25,6 +25,9 @@ wheels/
 venv/
 ENV/
 
+# Frontend
+frontend/
+
 # IDE
 .idea/
 .vscode/

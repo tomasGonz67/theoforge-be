@@ -19,12 +19,8 @@ cd theoforge-be
 docker-compose up -d --build
 ```
 
-3. Install frontend dependencies and run:
-```bash
-cd frontend
-npm install
-npm run dev
-``` 
+### Retesting Cookies
+You will need to clear cookies in your browser for effective testing of cookie creation
 
 ### Services
 
