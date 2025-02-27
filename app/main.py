@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Response
+from fastapi import FastAPI, HTTPException, Depends, Response, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine, text
@@ -15,10 +15,14 @@ app = FastAPI(title="Hello World API")
 
 origins=[
     "http://localhost:5173",
+    "localhost:5173",
     "http://localhost",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "http://127.0.0.1:8000/set-cookie",
+    "http://127.0.0.1:8000/auth",
+    "http://127.0.0.1:8000/simple-cookie-test",
+
 ]
 
 app.add_middleware(
@@ -68,6 +72,14 @@ users_db = {
 # Creating a JSON Response (to then set a HTTP-only cookie after immediate use by frontend)
 @app.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    '''
+    Method #1
+    Login to create JSON response for immediate use by frontend and set cookie afterward
+
+        - username: user@example.com
+        - password: Secure*1234
+    '''
+
     user = users_db.get(form_data.username)
     if not user or form_data.password != "Secure*1234":  # Replace with real hashing check
         raise HTTPException(status_code=400, detail="Invalid credentials")
@@ -84,6 +96,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 # Instantly setting the cookie and sending a response to frontend
 @app.post("/login/cookie")
 async def login_cookie(form_data: OAuth2PasswordRequestForm = Depends()):
+    '''
+    Method #2
+    Instantly sets cookie after creating access token and serves to frontend
+    '''
+
     user = users_db.get(form_data.username)
     if not user or form_data.password != "Secure*1234":
         raise HTTPException(status_code=400, detail="Invalid credentials")
@@ -107,11 +124,28 @@ async def login_cookie(form_data: OAuth2PasswordRequestForm = Depends()):
 
     return response
 
+# Testing cookie creation
+@app.get("/simple-cookie-test")
+async def simple_cookie_test(response: Response):
+    response.set_cookie(
+        key="simple_test",
+        value="hello_world",
+        httponly=False,
+        secure=False,
+        samesite=None
+    )
+    return {"message": "Simple cookie test"}
+
 # Set cookie after creating JSON response and immediate frontend handling (second step of Method #1)
 # Frontend can retrieve requests afterward by having ' credentials: "include" ' in fetch
 @app.post("/set-cookie")
 async def set_cookie(token_data: TokenResponse, response: Response):
+    '''
+    Set a cookie from TokenResponse
+    '''
+
     try:
+        
         access_token = token_data.access_token
 
         if not access_token:
@@ -120,22 +154,25 @@ async def set_cookie(token_data: TokenResponse, response: Response):
         response.set_cookie(
             key="access_token",
             value=access_token,
-            httponly=True,  # JavaScript cannot access this
+            httponly=False,  # JavaScript cannot access this
             secure=False, # set to true in prod
-            samesite="Lax"
+            samesite=None
         )
-
-        return JSONResponse(
-            content={"message": "Cookie set successfully"}, 
-            headers={"Access-Control-Allow-Credentials": "true"}
-        )
-    
+        
     except Exception as e:
         print(f"Error in set_cookie: {str(e)}")  # Log the error for debugging
         raise HTTPException(status_code=500, detail="Internal Server Error")
+    
+    return {"message": "set-cookie test"}
 
 @app.get("/test-auth")
 async def test_auth(response: Response):
+    '''
+    Tests cookie creation for Swagger FastAPI as it does not support normal cookies
+
+        - Must run this before /auth in FastAPI localhost:8000
+    '''
+
     # Create a token for testing
     access_token = create_access_token(
         data={"sub": "user@example.com", "role": "user role example"},
@@ -147,6 +184,7 @@ async def test_auth(response: Response):
         key="access_token",
         value=access_token,
         httponly=True,
+        secure=False,
         samesite="Lax"
     )
     
@@ -155,8 +193,16 @@ async def test_auth(response: Response):
 
 # When protecting certain routes using JWT authentication with the cookie
 @app.get("/auth")
-async def protected_route(username: str = Depends(get_current_user)):
-    return {"message": f"Hello, {username}! You have access to this route."}
+async def auth_route(access_token: str = Cookie(None)):
+    '''
+    Authenticates user based on cookie
+
+        - Uses encoded JWT in cookie for protected path check
+    '''
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Unauthorized: No access token found")
+
+    return {"message": "You have access!", "access_token": access_token}
 
 # Clears cookie when logging out
 @app.post("/logout/cookie")

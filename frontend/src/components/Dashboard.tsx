@@ -7,7 +7,8 @@ const Dashboard = () => {
   const handleCheckAuth = async () => {
     try {
       const data = await checkAuth();
-      setAuthMessage(`Authenticated as: ${data.username}`);
+      console.log("Auth Response:", data); // Debugging: log the actual response
+      setAuthMessage(`Authenticated as: ${data.access_token}`);
     } catch {
       setAuthMessage("Not authenticated.");
     }
