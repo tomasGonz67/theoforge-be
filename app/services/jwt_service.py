@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from settings.config import settings
 
 # Creating encrypted JWT token using jwt_secret_key with expiration
+# returns token with access_token and role
 def create_access_token(*, data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     # Convert role to uppercase before encoding the JWT
