@@ -8,7 +8,7 @@ from app.operations.user import UserService
 from app.schemas.user import UserCreate, UserResponse
 from app.database import Base, Database
 from app.auth.dependencies import get_db
-from app.routers import auth
+from app.routers import auth, guest
 
 # Get database URL from environment variable
 database_url = os.getenv("DATABASE_URL")
@@ -26,6 +26,7 @@ app = FastAPI(title="TheoForge API", lifespan=lifespan)
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(guest.router)
 
 # Keep existing engine for health check
 engine = create_engine(database_url) if database_url else None
