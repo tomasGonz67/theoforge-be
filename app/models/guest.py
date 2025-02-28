@@ -1,10 +1,17 @@
 from datetime import datetime
 import uuid
 from typing import Optional, List, Dict
-from sqlalchemy import String, DateTime, func
+from enum import Enum
+from sqlalchemy import String, DateTime, func, Enum as SQLAlchemyEnum
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
+
+# Define Enum for guest status
+class GuestStatus(str, Enum):
+    NEW = "NEW"
+    CONTACTED = "CONTACTED"
+    CONVERTED = "CONVERTED"
 
 class Guest(Base):
     __tablename__ = "guests"
@@ -21,6 +28,7 @@ class Guest(Base):
     pain_points: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
     current_tech: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
     additional_notes: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    status: Mapped[GuestStatus] = mapped_column(SQLAlchemyEnum(GuestStatus), default=GuestStatus.NEW, nullable=False)
 
     first_contact_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     conversation_history: Mapped[Optional[List[Dict]]] = mapped_column(JSONB, nullable=True, default=list)
@@ -28,4 +36,4 @@ class Guest(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     def __repr__(self) -> str:
-        return f"<Guest {self.name or 'Unknown'}, Company: {self.company or 'N/A'}>"
+        return f"<Guest {self.name or 'Unknown'}, Company: {self.company or 'N/A'}, Status: {self.status.value}>"

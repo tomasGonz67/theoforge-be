@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Optional, List, Dict
 from pydantic import BaseModel, Field, UUID4, ConfigDict
 
+from app.models.guest import GuestStatus
+
 
 class GuestBase(BaseModel):
     """Base schema for Guest with common attributes."""
@@ -16,6 +18,7 @@ class GuestBase(BaseModel):
     current_tech: Optional[List[str]] = Field(None, description="Guest's current technology stack")
     additional_notes: Optional[str] = Field(None, description="Any additional notes")
     conversation_history: Optional[List[Dict[str, str]]] = Field(None, description="List of past conversations with the guest")
+    status: Optional[GuestStatus] = Field(default=GuestStatus.NEW, description="Current status of the guest: NEW, CONTACTED, or CONVERTED")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -36,7 +39,8 @@ class GuestCreate(GuestBase):
                 "pain_points": ["Scalability issues", "Need for automation"],
                 "current_tech": ["React", "Node.js"],
                 "additional_notes": "Looking for a long-term partnership",
-                "conversation_history": [{"date": "2025-02-28", "summary": "Discussed project scope"}]
+                "conversation_history": [{"date": "2025-02-28", "summary": "Discussed project scope"}],
+                "status": "NEW"
             }
         }
     )
