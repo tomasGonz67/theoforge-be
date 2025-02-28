@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, UUID4, ConfigDict
 
 class GuestBase(BaseModel):
     """Base schema for Guest with common attributes."""
-    name: str = Field(..., description="Guest's full name")
+    name: Optional[str] = Field(None, description="Guest's full name")
     company: Optional[str] = Field(None, description="Company associated with the guest")
     industry: Optional[str] = Field(None, description="Industry of the guest")
     project_type: Optional[List[str]] = Field(None, description="Type of project guest is interested in")

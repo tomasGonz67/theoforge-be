@@ -7,7 +7,7 @@ import importlib
 import pkgutil
 
 from app.database import Base, Database
-from app.routers import auth
+from app.routers import auth, guest
 
 # Get database URL from environment variable
 database_url = os.getenv("DATABASE_URL")
@@ -45,6 +45,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(guest.router)
 
 # Keep existing engine for health check
 engine = create_engine(database_url) if database_url else None
