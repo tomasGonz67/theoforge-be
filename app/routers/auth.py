@@ -7,7 +7,7 @@ from app.operations.user import UserService
 from app.schemas.user import UserCreate, UserResponse
 from app.schemas.token_schema import TokenResponse
 from app.operations.jwt_service import create_access_token
-from dependencies import get_db
+from app.routers.dependencies import get_db
 from settings.config import settings
 
 # Create a router for auth endpoints
