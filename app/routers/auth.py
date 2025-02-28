@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Response, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import timedelta
 
 from app.operations.user import UserService
 from app.schemas.user import UserCreate, UserResponse
@@ -36,6 +37,16 @@ async def register(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Email already exists"
     ) 
+
+# Simulated user database for FastAPI example
+# DELETE THIS
+# TODO: Use database for user login
+users_db = {
+    "user@example.com": {
+        "username": "user@example.com",
+        "password": "Secure*1234",
+    }
+}
 
 # Creating a JSON Response (to then set a HTTP-only cookie after immediate use by frontend)
 @router.post("/login")

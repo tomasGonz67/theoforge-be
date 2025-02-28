@@ -1,14 +1,10 @@
-from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI
 from sqlalchemy import create_engine, text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 
-from app.operations.user import UserService
-from app.schemas.user import UserCreate, UserResponse
 from app.database import Base, Database
-from app.auth.dependencies import get_db
 from app.routers import auth
 
 # Get database URL from environment variable

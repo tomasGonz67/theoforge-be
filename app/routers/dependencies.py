@@ -1,9 +1,9 @@
 from builtins import Exception
-from fastapi import HTTPException
+from fastapi import HTTPException, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import Database
 from jose import JWTError
-from app.services.jwt_service import decode_token
+from app.operations.jwt_service import decode_token
 
 async def get_db() -> AsyncSession:
     """Dependency that provides a database session for each request."""
