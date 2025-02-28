@@ -50,6 +50,7 @@ class GuestSchema(GuestBase):
     """Schema for returning a guest object."""
     id: UUID4
     first_contact_timestamp: datetime = Field(..., description="Timestamp of the first contact with the guest")
+    last_interaction: Optional[datetime] = Field(None, description="Timestamp of the last interaction with the guest")
     created_at: datetime = Field(..., description="Timestamp when the guest record was created")
     updated_at: datetime = Field(..., description="Timestamp when the guest record was last updated")
 

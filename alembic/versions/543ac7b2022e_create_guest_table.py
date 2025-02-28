@@ -34,6 +34,7 @@ def upgrade() -> None:
     sa.Column('additional_notes', sa.String(), nullable=True),
     sa.Column('status', sa.Enum('NEW', 'CONTACTED', 'CONVERTED', name='gueststatus'), nullable=False, server_default='NEW'),
     sa.Column('first_contact_timestamp', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('last_interaction', sa.DateTime(timezone=True), nullable=True),
     sa.Column('conversation_history', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),

@@ -31,6 +31,7 @@ class Guest(Base):
     status: Mapped[GuestStatus] = mapped_column(SQLAlchemyEnum(GuestStatus), default=GuestStatus.NEW, nullable=False)
 
     first_contact_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_interaction: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     conversation_history: Mapped[Optional[List[Dict]]] = mapped_column(JSONB, nullable=True, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
