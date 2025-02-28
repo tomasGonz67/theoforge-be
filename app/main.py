@@ -1,13 +1,10 @@
-from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI
 from sqlalchemy import create_engine, text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 
-from app.operations.user import UserService
-from app.schemas.user import UserCreate, UserResponse
 from app.database import Base, Database
-from app.auth.dependencies import get_db
 from app.routers import auth
 
 # Get database URL from environment variable
@@ -23,6 +20,26 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="TheoForge API", lifespan=lifespan)
+
+origins=[
+    "http://localhost:5173",
+    "localhost:5173",
+    "http://localhost",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8000/set-cookie",
+    "http://127.0.0.1:8000/auth",
+    "http://127.0.0.1:8000/simple-cookie-test",
+
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Allow frontend origin
+    allow_credentials=True,  # Required for cookies/auth headers
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include routers
 app.include_router(auth.router)
