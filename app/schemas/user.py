@@ -84,8 +84,17 @@ class UserResponse(UserBase):
     updated_at: datetime
 
 class LoginRequest(BaseModel):
-    email: str = Field(..., example="user@example.com")
-    password: str = Field(..., example="SecurePass123!")
+    email: str = Field(...)
+    password: str = Field(...)
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "email": "user@example.com",
+                "password": "SecurePass123!"
+            }
+        }
+    )
 
 class ErrorResponse(BaseModel):
     """Schema for API error responses."""
