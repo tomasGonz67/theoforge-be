@@ -23,3 +23,8 @@ class Database:
         if cls._session_factory is None:
             raise ValueError("Database not initialized. Call `initialize()` first.")
         return cls._session_factory
+
+async def get_db() -> AsyncSession:
+    """Dependency to get the async database session."""
+    async with Database.get_session_factory()() as session:
+        yield session

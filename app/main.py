@@ -1,8 +1,11 @@
 from fastapi import FastAPI
+from fastapi import FastAPI
 from sqlalchemy import create_engine, text
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
+import importlib
+import pkgutil
 
 from app.database import Base, Database
 from app.routers import auth
@@ -68,4 +71,4 @@ async def health():
     return {
         "status": "healthy",
         "database": db_status
-    } 
+    }
