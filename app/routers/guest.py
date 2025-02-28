@@ -6,9 +6,13 @@ from app.database import get_db
 from app.models.guest import Guest
 from app.schemas.guest import GuestCreate, GuestSchema
 
-router = APIRouter()
+# Define router with prefix and tags for proper grouping
+router = APIRouter(
+    prefix="/guests",  # All endpoints will start with /guests
+    tags=["Guest"]  # Group all these routes under "guest" in the OpenAPI docs
+)
 
-@router.post("/guests/", response_model=GuestSchema)
+@router.post("/", response_model=GuestSchema)
 async def create_guest(guest_data: GuestCreate, db: AsyncSession = Depends(get_db)):
     """Create a new guest entry asynchronously."""
     guest_dict = guest_data.dict(exclude={"id"})  # Ensure no duplicate 'id' key
@@ -18,13 +22,13 @@ async def create_guest(guest_data: GuestCreate, db: AsyncSession = Depends(get_d
     await db.refresh(guest)
     return guest
 
-@router.get("/guests/", response_model=List[GuestSchema])
+@router.get("/", response_model=List[GuestSchema])
 async def get_guests(db: AsyncSession = Depends(get_db)):
     """Retrieve all guests asynchronously."""
     result = await db.execute(select(Guest))
     return result.scalars().all()
 
-@router.get("/guests/{guest_id}", response_model=GuestSchema)
+@router.get("/{guest_id}", response_model=GuestSchema)
 async def get_guest(guest_id: str, db: AsyncSession = Depends(get_db)):
     """Retrieve a guest by ID asynchronously."""
     result = await db.execute(select(Guest).filter(Guest.id == guest_id))
@@ -33,7 +37,7 @@ async def get_guest(guest_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Guest not found")
     return guest
 
-@router.put("/guests/{guest_id}", response_model=GuestSchema)
+@router.put("/{guest_id}", response_model=GuestSchema)
 async def update_guest(guest_id: str, guest_data: GuestCreate, db: AsyncSession = Depends(get_db)):
     """Update an existing guest asynchronously."""
     result = await db.execute(select(Guest).filter(Guest.id == guest_id))
@@ -48,7 +52,7 @@ async def update_guest(guest_id: str, guest_data: GuestCreate, db: AsyncSession 
     await db.refresh(guest)
     return guest
 
-@router.delete("/guests/{guest_id}")
+@router.delete("/{guest_id}")
 async def delete_guest(guest_id: str, db: AsyncSession = Depends(get_db)):
     """Delete a guest asynchronously."""
     result = await db.execute(select(Guest).filter(Guest.id == guest_id))
