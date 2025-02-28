@@ -39,13 +39,23 @@ async def get_guest(guest_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.put("/{guest_id}", response_model=GuestSchema)
 async def update_guest(guest_id: str, guest_data: GuestCreate, db: AsyncSession = Depends(get_db)):
-    """Update an existing guest asynchronously."""
+    """Update an existing guest while appending to conversation history."""
     result = await db.execute(select(Guest).filter(Guest.id == guest_id))
     guest = result.scalar_one_or_none()
+    
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")
     
-    for key, value in guest_data.dict(exclude_unset=True).items():
+    update_data = guest_data.dict(exclude_unset=True)
+
+    # Append new conversation history instead of overwriting
+    if "conversation_history" in update_data:
+        existing_history = guest.conversation_history or []
+        new_history = update_data["conversation_history"]
+        update_data["conversation_history"] = existing_history + new_history
+
+    # Update guest attributes
+    for key, value in update_data.items():
         setattr(guest, key, value)
 
     await db.commit()
