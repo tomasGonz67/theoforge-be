@@ -50,22 +50,22 @@ users_db = {
 
 # Creating a JSON Response (to then set a HTTP-only cookie after immediate use by frontend)
 @router.post("/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: AsyncSession = Depends(get_db)):
     '''
-    Method #1
-    Login to create JSON response for immediate use by frontend and set cookie afterward
+    Login to create JSON response for immediate use by frontend and to set cookie afterward
 
         - username: user@example.com
-        - password: Secure*1234
+        - password: SecurePass123!
     '''
 
-    user = users_db.get(form_data.username)
-    if not user or form_data.password != "Secure*1234":  # Replace with real hashing check
-        raise HTTPException(status_code=400, detail="Invalid credentials")
+    user = await UserService.login_user(session, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid username/password")
 
+    # Creating access token
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(
-        data={"sub": user["username"], "role": "user role example"},
+        data={"sub": user.email, "role": user.role.name},
         expires_delta=access_token_expires
     )
 

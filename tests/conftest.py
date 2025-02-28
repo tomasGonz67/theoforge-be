@@ -19,7 +19,7 @@ from faker import Faker
 from app.main import app
 from app.database import Base, Database
 from app.models.user import User, UserRole
-from app.auth.dependencies import get_db
+from app.routers.dependencies import get_db
 from app.core.security import hash_password
 
 fake = Faker()

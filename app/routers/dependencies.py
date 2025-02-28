@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import Database
 from jose import JWTError
 from app.operations.jwt_service import decode_token
+from settings.config import Settings
 
 async def get_db() -> AsyncSession:
     """Dependency that provides a database session for each request."""
@@ -30,3 +31,7 @@ def get_current_user(access_token: str = Cookie(None)):
         return username
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+def get_settings() -> Settings:
+    """Return application settings."""
+    return Settings()

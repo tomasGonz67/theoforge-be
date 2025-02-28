@@ -7,11 +7,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 import logging
+from datetime import timezone
 
 from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserResponse, ErrorResponse
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
+from app.routers.dependencies import get_settings
 
+settings = get_settings()
 logger = logging.getLogger(__name__)
 
 class UserService:
@@ -95,6 +98,21 @@ class UserService:
     async def register_user(cls, session: AsyncSession, user_data: Dict[str, str]) -> Optional[User]:
         """Register a new user. This is the main method to be used for registration."""
         return await cls.create(session, user_data)
+    
+    @classmethod
+    async def login_user(cls, session: AsyncSession, email: str, password: str) -> Optional[User]:
+        user = await cls.get_by_email(session, email)
+        if user:
+            if user.email_verified is False:
+                return None
+            if verify_password(password, user.hashed_password):
+                session.add(user)
+                await session.commit()
+                return user
+            else:
+                session.add(user)
+                await session.commit()
+        return None
 
 """
 Changes made for registration implementation:

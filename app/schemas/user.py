@@ -83,6 +83,10 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: datetime
 
+class LoginRequest(BaseModel):
+    email: str = Field(..., example="user@example.com")
+    password: str = Field(..., example="SecurePass123!")
+
 class ErrorResponse(BaseModel):
     """Schema for API error responses."""
     error: str = Field(..., description="Error type")
