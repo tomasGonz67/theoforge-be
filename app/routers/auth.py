@@ -29,13 +29,14 @@ async def register(
     - Creates user with hashed password
     - First user gets ADMIN role, others get USER role
     """
-    user = await registration_service.register_user(user_create.model_dump())
-    if user:
+    try:
+        user = await registration_service.register_user(user_create.model_dump())
         return user
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Email already exists"
-    ) 
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        ) 
 
 # Simulated user database for FastAPI example
 # DELETE THIS

@@ -77,9 +77,9 @@ class DbService:
             return result
         except SQLAlchemyError as e:
             logger.error(f"Database error: {e}")
-            if commit:
-                logger.debug("Rolling back transaction")
-                await session.rollback()
+            # Always roll back on error, regardless of commit parameter
+            logger.debug("Rolling back transaction")
+            await session.rollback()
             raise
 
     @classmethod

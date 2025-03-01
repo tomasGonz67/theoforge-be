@@ -70,7 +70,7 @@ class RegistrationService:
             existing_user = await self.repository.get_by_email(validated_data['email'])
             if existing_user:
                 logger.error("User with given email already exists.")
-                return None
+                raise ValueError(f"User with email {validated_data['email']} already exists")
             
             # Hash password and remove plain password
             validated_data['hashed_password'] = hash_password(validated_data.pop('password'))

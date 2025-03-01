@@ -81,7 +81,7 @@ async def test_duplicate_email_registration(async_client: AsyncClient, db_sessio
     response = await async_client.post("/auth/register", json=user_data)
     
     assert response.status_code == 400
-    assert "Email already exists" in response.json()["detail"]
+    assert "already exists" in response.json()["detail"]
 
 @pytest.mark.asyncio
 async def test_invalid_password_registration(async_client: AsyncClient):
