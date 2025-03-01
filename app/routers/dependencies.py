@@ -1,10 +1,11 @@
 from builtins import Exception
-from fastapi import HTTPException, Cookie, Depends
+from fastapi import HTTPException, Cookie, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import Database
 from jose import JWTError
 from app.operations.jwt_service import decode_token
 from settings.config import Settings
+from sqlalchemy.exc import SQLAlchemyError
 
 async def get_db() -> AsyncSession:
     """Dependency that provides a database session for each request."""
@@ -12,9 +13,12 @@ async def get_db() -> AsyncSession:
     async with async_session_factory() as session:
         try:
             yield session
-        except Exception as e:
+        except SQLAlchemyError as e:
             await session.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Database error: {str(e)}"
+            )
         finally:
             await session.close()
 

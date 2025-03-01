@@ -14,6 +14,7 @@ from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserResponse, ErrorResponse
 from app.core.security import hash_password, verify_password
 from settings.config import Settings  
+from app.database import DbService
 
 settings = Settings()  
 logger = logging.getLogger(__name__)
@@ -23,45 +24,34 @@ class UserRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
     
-    async def _execute_query(self, query):
-        """Execute a query with error handling and transaction management."""
-        try:
-            result = await self.session.execute(query)
-            await self.session.commit()
-            return result
-        except SQLAlchemyError as e:
-            logger.error(f"Database error: {e}")
-            await self.session.rollback()
-            return None
-    
     async def get_by_id(self, user_id: UUID) -> Optional[User]:
         """Get user by their ID."""
         query = select(User).filter_by(id=user_id)
-        result = await self._execute_query(query)
+        result = await DbService.execute_query(self.session, query)
         return result.scalars().first() if result else None
     
     async def get_by_email(self, email: str) -> Optional[User]:
         """Check if user exists with given email."""
         query = select(User).filter_by(email=email)
-        result = await self._execute_query(query)
+        result = await DbService.execute_query(self.session, query)
         return result.scalars().first() if result else None
     
     async def get_by_nickname(self, nickname: str) -> Optional[User]:
         """Check if user exists with given nickname."""
         query = select(User).filter_by(nickname=nickname)
-        result = await self._execute_query(query)
+        result = await DbService.execute_query(self.session, query)
         return result.scalars().first() if result else None
     
     async def count(self) -> int:
         """Count total number of users. Used to determine if first user (admin)."""
         query = select(func.count()).select_from(User)
-        result = await self.session.execute(query)
+        result = await DbService.execute_query(self.session, query)
         return result.scalar()
     
     async def save(self, user: User) -> User:
         """Save user to database."""
         self.session.add(user)
-        await self.session.commit()
+        await DbService.commit(self.session)
         await self.session.refresh(user)
         return user
 
@@ -139,4 +129,8 @@ Changes made for service extension implementation:
    - Clear separation of concerns
    - Testability through dependency injection
    - More maintainable and extensible code
+
+5. Database abstraction improvements:
+   - Removed repository-specific _execute_query method
+   - Using centralized DbService for all database operations
 """
