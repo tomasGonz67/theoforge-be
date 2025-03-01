@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime
 import logging
 
 from app.models.guest import Guest
@@ -86,3 +87,28 @@ class GuestService:
             logger.error(f"Error deleting guest {guest.id}: {e}")
             await session.rollback()
             return False
+
+    @classmethod
+    async def add_chat_message(cls, session: AsyncSession, guest_id: UUID, message: str, sender: str) -> Optional[Guest]:
+        """Append a message to the guest's conversation history and update last interaction."""
+        guest = await cls.get_guest_by_id(session, guest_id)
+        if not guest:
+            logger.error(f"Guest with ID {guest_id} not found.")
+            return None
+        
+        try:
+            new_message = {
+                "message": message,
+                "sender": sender,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            guest.conversation_history = (guest.conversation_history or []) + [new_message]
+            guest.last_interaction = datetime.utcnow()
+
+            await session.commit()
+            await session.refresh(guest)
+            return guest
+        except SQLAlchemyError as e:
+            logger.error(f"Error updating conversation history for guest {guest_id}: {e}")
+            await session.rollback()
+            return None

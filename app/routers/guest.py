@@ -64,3 +64,14 @@ async def delete_guest(guest_id: UUID, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Failed to delete guest")
     
     return {"message": "Guest deleted successfully"}
+
+@router.post("/guests/{guest_id}/chat")
+async def update_conversation(guest_id: UUID, message: str, sender: str, db: AsyncSession = Depends(get_db)):
+    updated_guest = await GuestService.add_chat_message(db, guest_id, message, sender)
+    if updated_guest is None:
+        return {"error": "Guest not found or update failed"}
+    return {
+        "conversation_history": updated_guest.conversation_history,
+        "last_interaction": updated_guest.last_interaction
+    }
+

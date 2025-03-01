@@ -37,8 +37,9 @@ class Guest(Base):
     
     # Use MutableList for tracking JSONB changes
     conversation_history: Mapped[Optional[List[Dict]]] = mapped_column(
-        MutableList.as_mutable(JSONB), nullable=True, default=list
+    MutableList.as_mutable(JSONB), nullable=True, default=list
     )
+
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
