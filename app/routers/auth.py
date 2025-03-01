@@ -3,11 +3,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
 
-from app.operations.user import UserService
 from app.schemas.user import UserCreate, UserResponse
 from app.schemas.token_schema import TokenResponse
 from app.operations.jwt_service import create_access_token
-from app.routers.dependencies import get_db
+from app.routers.dependencies import get_db, get_registration_service, get_auth_service
 from settings.config import settings
 
 # Create a router for auth endpoints
@@ -20,7 +19,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 )
 async def register(
     user_create: UserCreate,
-    db: AsyncSession = Depends(get_db)
+    registration_service = Depends(get_registration_service)
 ):
     """
     Register a new user.
@@ -30,7 +29,7 @@ async def register(
     - Creates user with hashed password
     - First user gets ADMIN role, others get USER role
     """
-    user = await UserService.register_user(db, user_create.model_dump())
+    user = await registration_service.register_user(user_create.model_dump())
     if user:
         return user
     raise HTTPException(
@@ -50,7 +49,10 @@ users_db = {
 
 # Creating a JSON Response (to then set a HTTP-only cookie after immediate use by frontend)
 @router.post("/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: AsyncSession = Depends(get_db)):
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    auth_service = Depends(get_auth_service)
+):
     '''
     Login to create JSON response for immediate use by frontend and to set cookie afterward
 
@@ -58,7 +60,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Async
         - password: SecurePass123!
     '''
 
-    user = await UserService.login_user(session, form_data.username, form_data.password)
+    user = await auth_service.login_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=400, detail="Invalid username/password")
 

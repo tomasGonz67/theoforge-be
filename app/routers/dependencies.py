@@ -1,5 +1,5 @@
 from builtins import Exception
-from fastapi import HTTPException, Cookie
+from fastapi import HTTPException, Cookie, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import Database
 from jose import JWTError
@@ -35,3 +35,19 @@ def get_current_user(access_token: str = Cookie(None)):
 def get_settings() -> Settings:
     """Return application settings."""
     return Settings()
+
+# New service dependencies with imports inside the functions to avoid circular imports
+def get_user_repository(db: AsyncSession = Depends(get_db)):
+    """Dependency that provides a UserRepository instance."""
+    from app.operations.user import UserRepository
+    return UserRepository(db)
+
+def get_registration_service(repository = Depends(get_user_repository)):
+    """Dependency that provides a RegistrationService instance."""
+    from app.operations.user import RegistrationService
+    return RegistrationService(repository)
+
+def get_auth_service(repository = Depends(get_user_repository)):
+    """Dependency that provides an AuthenticationService instance."""
+    from app.operations.user import AuthenticationService
+    return AuthenticationService(repository)
