@@ -1,16 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from uuid import UUID
-
 from app.database import get_db
 from app.operations.guest import GuestService
-from app.schemas.guest import GuestCreate, GuestSchema
+from app.schemas.guest import GuestCreate, GuestSchema, GuestUpdate
 
 # Define router with prefix and tags for proper grouping
 router = APIRouter(
     prefix="/guests",  # All endpoints will start with /guests
-    tags=["Guest"]  # Group all these routes under "guest" in the OpenAPI docs
+    tags=["Guest"]  # Group all these routes under "Guest" in OpenAPI docs
 )
 
 @router.post("/", response_model=GuestSchema)
@@ -26,18 +24,18 @@ async def get_guests(db: AsyncSession = Depends(get_db)):
     """Retrieve all guests asynchronously."""
     return await GuestService.get_all_guests(db)
 
-@router.get("/{guest_id}", response_model=GuestSchema)
-async def get_guest(guest_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Retrieve a guest by ID asynchronously."""
-    guest = await GuestService.get_guest_by_id(db, guest_id)
+@router.get("/{session_id}", response_model=GuestSchema)
+async def get_guest(session_id: str, db: AsyncSession = Depends(get_db)):
+    """Retrieve a guest by session ID asynchronously."""
+    guest = await GuestService.get_guest_by_session(db, session_id)
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")
     return guest
 
-@router.put("/{guest_id}", response_model=GuestSchema)
-async def update_guest(guest_id: UUID, guest_data: GuestCreate, db: AsyncSession = Depends(get_db)):
-    """Update an existing guest while appending to conversation history."""
-    guest = await GuestService.get_guest_by_id(db, guest_id)
+@router.put("/{session_id}", response_model=GuestSchema)
+async def update_guest(session_id: str, guest_data: GuestUpdate, db: AsyncSession = Depends(get_db)):
+    """Update an existing guest with engagement tracking."""
+    guest = await GuestService.get_guest_by_session(db, session_id)
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")
     
@@ -52,10 +50,10 @@ async def update_guest(guest_id: UUID, guest_data: GuestCreate, db: AsyncSession
     
     return updated_guest
 
-@router.delete("/{guest_id}")
-async def delete_guest(guest_id: UUID, db: AsyncSession = Depends(get_db)):
+@router.delete("/{session_id}")
+async def delete_guest(session_id: str, db: AsyncSession = Depends(get_db)):
     """Delete a guest asynchronously."""
-    guest = await GuestService.get_guest_by_id(db, guest_id)
+    guest = await GuestService.get_guest_by_session(db, session_id)
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")
 
@@ -65,13 +63,14 @@ async def delete_guest(guest_id: UUID, db: AsyncSession = Depends(get_db)):
     
     return {"message": "Guest deleted successfully"}
 
-@router.post("/guests/{guest_id}/chat")
-async def update_conversation(guest_id: UUID, message: str, sender: str, db: AsyncSession = Depends(get_db)):
-    updated_guest = await GuestService.add_chat_message(db, guest_id, message, sender)
+@router.post("/{session_id}/interactions")
+async def add_interaction(session_id: str, event: dict, db: AsyncSession = Depends(get_db)):
+    """Append an interaction event to the guest's record."""
+    updated_guest = await GuestService.add_interaction(db, session_id, event)
     if updated_guest is None:
-        return {"error": "Guest not found or update failed"}
+        raise HTTPException(status_code=404, detail="Guest not found or update failed")
+    
     return {
-        "conversation_history": updated_guest.conversation_history,
+        "interaction_history": updated_guest.interaction_history,
         "last_interaction": updated_guest.last_interaction
     }
-

@@ -9,46 +9,41 @@ from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy import event
 from app.database import Base
 
-# Define Enum for guest status
-class GuestStatus(str, Enum):
-    NEW = "NEW"
-    CONTACTED = "CONTACTED"
-    CONVERTED = "CONVERTED"
+# Define Enum for guest engagement status
+class GuestEngagementStatus(str, Enum):
+    NEW_VISITOR = "NEW_VISITOR"
+    ENGAGED = "ENGAGED"
+    RETURNING = "RETURNING"
 
 class Guest(Base):
     __tablename__ = "guests"
     __mapper_args__ = {"eager_defaults": True}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    company: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    industry: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    project_type: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
-    budget: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    timeline: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    contact_info: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    pain_points: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
-    current_tech: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
-    additional_notes: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    status: Mapped[GuestStatus] = mapped_column(SQLAlchemyEnum(GuestStatus), default=GuestStatus.NEW, nullable=False)
+    
+    # Remove PII fields like name, company, contact info
+    session_id: Mapped[Optional[str]] = mapped_column(String, nullable=False)  # Stores a hashed or anonymous session ID
+    page_views: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)  # Tracks visited pages
+    interaction_events: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)  # Tracks actions like clicks, form interactions
 
-    first_contact_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    engagement_status: Mapped[GuestEngagementStatus] = mapped_column(SQLAlchemyEnum(GuestEngagementStatus), default=GuestEngagementStatus.NEW_VISITOR, nullable=False)
+
+    first_visit_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_interaction: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
-    # Use MutableList for tracking JSONB changes
-    conversation_history: Mapped[Optional[List[Dict]]] = mapped_column(
-    MutableList.as_mutable(JSONB), nullable=True, default=list
+    # Track behavior in a privacy-conscious way
+    interaction_history: Mapped[Optional[List[Dict]]] = mapped_column(
+        MutableList.as_mutable(JSONB), nullable=True, default=list
     )
-
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     def __repr__(self) -> str:
-        return f"<Guest {self.name or 'Unknown'}, Company: {self.company or 'N/A'}, Status: {self.status.value}>"
+        return f"<Guest Session {self.session_id[:8]}, Status: {self.engagement_status.value}>"
 
-# Event listener to update last_interaction when conversation_history changes
-@event.listens_for(Guest.conversation_history, "set", propagate=True)
+# Event listener to update last_interaction when interaction_history changes
+@event.listens_for(Guest.interaction_history, "set", propagate=True)
 def update_last_interaction(target, value, oldvalue, initiator):
     if value != oldvalue:  # Check if the history was modified
         target.last_interaction = datetime.utcnow()
