@@ -21,6 +21,7 @@ from app.database import Base, Database
 from app.models.user import User, UserRole
 from app.routers.dependencies import get_db
 from app.core.security import hash_password
+from app.models.guest import Guest, GuestStatus  # ✅ Fixed Import
 
 fake = Faker()
 
@@ -127,7 +128,7 @@ async def locked_user(db_session):
         "role": UserRole.AUTHENTICATED,
         "email_verified": False,
         "is_locked": True,
-        "failed_login_attempts": settings.max_login_attempts,
+        "failed_login_attempts": 5,  # Adjust according to settings
     }
     user = User(**user_data)
     db_session.add(user)
@@ -191,7 +192,6 @@ async def users_with_same_role_50_users(db_session):
 # Configure a fixture for each type of user role you want to test
 @pytest.fixture(scope="function")
 def admin_token(admin_user):
-    # Assuming admin_user has an 'id' and 'role' attribute
     token_data = {"sub": str(admin_user.id), "role": admin_user.role.name}
     return create_access_token(data=token_data, expires_delta=timedelta(minutes=30))
 
@@ -202,14 +202,24 @@ def user_token(user):
 
 @pytest.fixture
 def email_service():
-    if settings.send_real_mail == 'true':
-        # Return the real email service when specifically testing email functionality
-        return EmailService()
-    else:
-        # Otherwise, use a mock to prevent actual email sending
-        mock_service = AsyncMock(spec=EmailService)
-        mock_service.send_verification_email.return_value = None
-        mock_service.send_user_email.return_value = None
-        return mock_service
+    """Mock email service to prevent actual email sending in tests."""
+    mock_service = AsyncMock(spec=EmailService)
+    mock_service.send_verification_email.return_value = None
+    mock_service.send_user_email.return_value = None
+    return mock_service
 
-
+@pytest.fixture(scope="function")
+async def test_guest(db_session: AsyncSession):
+    """Fixture to create a test guest in the database."""
+    guest_data = {
+        "session_id": "test_session_123",
+        "page_views": ["/home", "/about"],
+        "interaction_events": ["clicked_signup"],
+        "status": GuestStatus.NEW,  # ✅ Fixed key name
+        "interaction_history": [{"event": "visited_homepage", "timestamp": "2025-03-01T12:00:00Z"}],
+    }
+    guest = Guest(**guest_data)
+    db_session.add(guest)
+    await db_session.commit()
+    await db_session.refresh(guest)
+    return guest

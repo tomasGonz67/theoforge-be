@@ -9,11 +9,11 @@ from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy import event
 from app.database import Base
 
-# Define Enum for guest engagement status
-class GuestEngagementStatus(str, Enum):
-    NEW_VISITOR = "NEW_VISITOR"
-    ENGAGED = "ENGAGED"
-    RETURNING = "RETURNING"
+# Define Enum for guest status
+class GuestStatus(str, Enum):
+    NEW = "NEW"
+    CONTACTED = "CONTACTED"
+    CONVERTED = "CONVERTED"
 
 class Guest(Base):
     __tablename__ = "guests"
@@ -26,7 +26,7 @@ class Guest(Base):
     page_views: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)  # Tracks visited pages
     interaction_events: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)  # Tracks actions like clicks, form interactions
 
-    engagement_status: Mapped[GuestEngagementStatus] = mapped_column(SQLAlchemyEnum(GuestEngagementStatus), default=GuestEngagementStatus.NEW_VISITOR, nullable=False)
+    status: Mapped[GuestStatus] = mapped_column(SQLAlchemyEnum(GuestStatus), default=GuestStatus.NEW, nullable=False)
 
     first_visit_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_interaction: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -40,7 +40,7 @@ class Guest(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     def __repr__(self) -> str:
-        return f"<Guest Session {self.session_id[:8]}, Status: {self.engagement_status.value}>"
+        return f"<Guest Session {self.session_id[:8]}, Status: {self.status.value}>"
 
 # Event listener to update last_interaction when interaction_history changes
 @event.listens_for(Guest.interaction_history, "set", propagate=True)
