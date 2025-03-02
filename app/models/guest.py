@@ -21,26 +21,38 @@ class Guest(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
-    # Remove PII fields like name, company, contact info
-    session_id: Mapped[Optional[str]] = mapped_column(String, nullable=False)  # Stores a hashed or anonymous session ID
+    # Privacy-conscious tracking fields
+    session_id: Mapped[Optional[str]] = mapped_column(String, nullable=False)  # Hashed or anonymous session ID
     page_views: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)  # Tracks visited pages
     interaction_events: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)  # Tracks actions like clicks, form interactions
+    
+    # Optional fields related to guest inquiries
+    name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    company: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    industry: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    project_type: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
+    budget: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    timeline: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    contact_info: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    pain_points: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
+    current_tech: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
+    additional_notes: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     status: Mapped[GuestStatus] = mapped_column(SQLAlchemyEnum(GuestStatus), default=GuestStatus.NEW, nullable=False)
 
     first_visit_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_interaction: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
-    # Track behavior in a privacy-conscious way
+    # Track interactions and conversations
     interaction_history: Mapped[Optional[List[Dict]]] = mapped_column(
         MutableList.as_mutable(JSONB), nullable=True, default=list
     )
-
+    
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     def __repr__(self) -> str:
-        return f"<Guest Session {self.session_id[:8]}, Status: {self.status.value}>"
+        return f"<Guest Session {self.session_id[:8] if self.session_id else 'Unknown'}, Status: {self.status.value}>"
 
 # Event listener to update last_interaction when interaction_history changes
 @event.listens_for(Guest.interaction_history, "set", propagate=True)

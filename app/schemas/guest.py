@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional, List, Dict
 from pydantic import BaseModel, Field, UUID4
+
 from app.models.guest import GuestStatus
 
 class GuestBase(BaseModel):
@@ -12,13 +13,23 @@ class GuestBase(BaseModel):
     interaction_events: Optional[List[str]] = Field(
         default=["clicked_signup"], description="List of interaction events", example=["clicked_login", "viewed_product"]
     )
-    status: GuestStatus = Field(
-        default=GuestStatus.NEW, description="Guest status", example="NEW"
-    )
+    name: Optional[str] = Field(None, description="Guest's full name")
+    company: Optional[str] = Field(None, description="Company associated with the guest")
+    industry: Optional[str] = Field(None, description="Industry of the guest")
+    project_type: Optional[List[str]] = Field(None, description="Type of project guest is interested in")
+    budget: Optional[str] = Field(None, description="Estimated budget for the project")
+    timeline: Optional[str] = Field(None, description="Project timeline")
+    contact_info: Optional[str] = Field(None, description="Guest's contact information")
+    pain_points: Optional[List[str]] = Field(None, description="Challenges or problems the guest is facing")
+    current_tech: Optional[List[str]] = Field(None, description="Guest's current technology stack")
+    additional_notes: Optional[str] = Field(None, description="Any additional notes")
     interaction_history: Optional[List[Dict[str, str]]] = Field(
         default=[{"event": "visited_homepage", "timestamp": "2025-03-01T12:00:00Z"}], 
         description="List of past interactions",
         example=[{"event": "clicked_signup", "timestamp": "2025-03-01T14:00:00Z"}]
+    )
+    status: GuestStatus = Field(
+        default=GuestStatus.NEW, description="Current status of the guest: NEW, CONTACTED, or CONVERTED"
     )
 
 class GuestCreate(GuestBase):
@@ -29,8 +40,18 @@ class GuestCreate(GuestBase):
                 "session_id": "session_test123",
                 "page_views": ["/home", "/contact"],
                 "interaction_events": ["clicked_contact_form"],
-                "status": "NEW",
-                "interaction_history": [{"event": "filled_contact_form", "timestamp": "2025-03-01T15:30:00Z"}]
+                "name": "John Doe",
+                "company": "Tech Solutions",
+                "industry": "Software",
+                "project_type": ["Web Development"],
+                "budget": "$10,000 - $20,000",
+                "timeline": "Q2 2025",
+                "contact_info": "john.doe@example.com",
+                "pain_points": ["Scalability issues", "Need for automation"],
+                "current_tech": ["React", "Node.js"],
+                "additional_notes": "Looking for a long-term partnership",
+                "interaction_history": [{"event": "filled_contact_form", "timestamp": "2025-03-01T15:30:00Z"}],
+                "status": "NEW"
             }
         }
     }
