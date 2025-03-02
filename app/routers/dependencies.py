@@ -29,11 +29,14 @@ def get_current_user(access_token: str = Cookie(None)):
 
     try:
         payload = decode_token(access_token)
+        if payload is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
         username: str = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         return username
-    except JWTError:
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 def get_settings() -> Settings:

@@ -6,7 +6,7 @@ from datetime import timedelta
 from app.schemas.user import UserCreate, UserResponse
 from app.schemas.token_schema import TokenResponse
 from app.operations.jwt_service import create_access_token
-from app.routers.dependencies import get_db, get_registration_service, get_auth_service
+from app.routers.dependencies import get_db, get_registration_service, get_auth_service, get_current_user
 from settings.config import settings
 
 # Create a router for auth endpoints
@@ -92,9 +92,9 @@ async def set_cookie(token_data: TokenResponse, response: Response):
         response.set_cookie(
             key="access_token",
             value=access_token,
-            httponly=False,  # JavaScript cannot access this
+            httponly=True,  # JavaScript cannot access this
             secure=False, # set to true in prod
-            samesite=None
+            samesite="Lax"
         )
         
     except Exception as e:
@@ -105,17 +105,15 @@ async def set_cookie(token_data: TokenResponse, response: Response):
 
 # When protecting certain routes using JWT authentication with the cookie
 @router.get("/auth")
-async def auth_route(access_token: str = Cookie(None)):
+async def auth_route(username: str = Depends(get_current_user)):
     '''
     Authenticates user based on cookie
 
         - Uses encoded JWT in cookie for protected path check
+        - Validates token through get_current_user dependency
     '''
     
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Unauthorized: No access token found")
-
-    return {"message": "You have access!", "access_token": access_token}
+    return {"message": "You have access!", "username": username}
 
 # Clears cookie when logging out
 @router.post("/logout/cookie")
