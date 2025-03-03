@@ -25,6 +25,7 @@ from app.core.security import hash_password
 from app.operations.jwt_service import create_access_token
 from settings.config import settings
 from app.operations.user import UserRepository, AuthenticationService, RegistrationService
+from app.models.guest import Guest, GuestStatus  # ✅ Fixed Import
 
 fake = Faker()
 
@@ -190,7 +191,6 @@ async def users_with_same_role_50_users(db_session):
 # Configure a fixture for each type of user role you want to test
 @pytest.fixture(scope="function")
 def admin_token(admin_user):
-    # Assuming admin_user has an 'id' and 'role' attribute
     token_data = {"sub": str(admin_user.id), "role": admin_user.role.name}
     return create_access_token(data=token_data, expires_delta=timedelta(minutes=30))
 
@@ -226,4 +226,25 @@ def db_service():
     from app.database import DbService
     return DbService
 
+@pytest.fixture(scope="function")
+async def test_guest(db_session: AsyncSession):
+    """Fixture to create and verify a test guest in the database before running tests."""
+    guest_data = {
+        "session_id": "test_session_123",
+        "page_views": ["/home", "/about"],
+        "interaction_events": ["clicked_signup"],
+        "status": GuestStatus.NEW,
+        "interaction_history": [{"event": "visited_homepage", "timestamp": "2025-03-01T12:00:00Z"}],
+    }
+    
+    guest = Guest(**guest_data)
+    db_session.add(guest)
+    
+    await db_session.commit()  # ✅ Ensure it's written to the database
+    await db_session.refresh(guest)  # ✅ Ensure it's retrievable
 
+    # 🔥 **Verify guest actually exists** before returning it
+    stored_guest = await db_session.get(Guest, guest.id)
+    assert stored_guest is not None, "Guest was not found in the database after commit!"
+
+    return stored_guest
