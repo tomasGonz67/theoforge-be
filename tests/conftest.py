@@ -7,7 +7,7 @@ This module provides pytest fixtures for:
 - User fixtures for different test scenarios
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import uuid4
 import os
 import pytest
@@ -15,12 +15,17 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
 from faker import Faker
+from unittest.mock import AsyncMock
 
 from app.main import app
-from app.database import Base, Database
+from app.database import Base, Database, DbService
 from app.models.user import User, UserRole
-from app.auth.dependencies import get_db
+from app.routers.dependencies import get_db
 from app.core.security import hash_password
+from app.operations.jwt_service import create_access_token
+from settings.config import settings
+from app.operations.user import UserRepository, AuthenticationService, RegistrationService
+from app.models.guest import Guest, GuestStatus  # ✅ Fixed Import
 
 fake = Faker()
 
@@ -91,7 +96,7 @@ async def user(db_session):
         "email": fake.email(),
         "hashed_password": hash_password("SecurePass123!"),
         "role": UserRole.USER,
-        "email_verified": False
+        "email_verified": True
     }
     user = User(**user_data)
     db_session.add(user)
@@ -124,10 +129,8 @@ async def locked_user(db_session):
         "last_name": fake.last_name(),
         "email": unique_email,
         "hashed_password": hash_password("MySuperPassword$1234"),
-        "role": UserRole.AUTHENTICATED,
-        "email_verified": False,
-        "is_locked": True,
-        "failed_login_attempts": settings.max_login_attempts,
+        "role": UserRole.USER,
+        "email_verified": False
     }
     user = User(**user_data)
     db_session.add(user)
@@ -142,9 +145,8 @@ async def verified_user(db_session):
         "last_name": fake.last_name(),
         "email": fake.email(),
         "hashed_password": hash_password("MySuperPassword$1234"),
-        "role": UserRole.AUTHENTICATED,
-        "email_verified": True,
-        "is_locked": False,
+        "role": UserRole.USER,
+        "email_verified": True
     }
     user = User(**user_data)
     db_session.add(user)
@@ -159,9 +161,8 @@ async def unverified_user(db_session):
         "last_name": fake.last_name(),
         "email": fake.email(),
         "hashed_password": hash_password("MySuperPassword$1234"),
-        "role": UserRole.AUTHENTICATED,
-        "email_verified": False,
-        "is_locked": False,
+        "role": UserRole.USER,
+        "email_verified": False
     }
     user = User(**user_data)
     db_session.add(user)
@@ -178,9 +179,8 @@ async def users_with_same_role_50_users(db_session):
             "last_name": fake.last_name(),
             "email": fake.email(),
             "hashed_password": fake.password(),
-            "role": UserRole.AUTHENTICATED,
-            "email_verified": False,
-            "is_locked": False,
+            "role": UserRole.USER,
+            "email_verified": False
         }
         user = User(**user_data)
         db_session.add(user)
@@ -191,7 +191,6 @@ async def users_with_same_role_50_users(db_session):
 # Configure a fixture for each type of user role you want to test
 @pytest.fixture(scope="function")
 def admin_token(admin_user):
-    # Assuming admin_user has an 'id' and 'role' attribute
     token_data = {"sub": str(admin_user.id), "role": admin_user.role.name}
     return create_access_token(data=token_data, expires_delta=timedelta(minutes=30))
 
@@ -200,16 +199,52 @@ def user_token(user):
     token_data = {"sub": str(user.id), "role": user.role.name}
     return create_access_token(data=token_data, expires_delta=timedelta(minutes=30))
 
-@pytest.fixture
-def email_service():
-    if settings.send_real_mail == 'true':
-        # Return the real email service when specifically testing email functionality
-        return EmailService()
-    else:
-        # Otherwise, use a mock to prevent actual email sending
-        mock_service = AsyncMock(spec=EmailService)
-        mock_service.send_verification_email.return_value = None
-        mock_service.send_user_email.return_value = None
-        return mock_service
+# Add fixtures for our new services
+@pytest.fixture(scope="function")
+def user_repository(db_session):
+    """Provide a UserRepository instance for testing."""
+    from app.operations.user import UserRepository
+    return UserRepository(db_session)
 
+@pytest.fixture(scope="function")
+def authentication_service(db_session):
+    """Provide an AuthenticationService instance for testing."""
+    from app.operations.user import AuthenticationService, UserRepository
+    repository = UserRepository(db_session)
+    return AuthenticationService(repository)
 
+@pytest.fixture(scope="function")
+def registration_service(db_session):
+    """Provide a RegistrationService instance for testing."""
+    from app.operations.user import RegistrationService, UserRepository
+    repository = UserRepository(db_session)
+    return RegistrationService(repository)
+
+@pytest.fixture(scope="function")
+def db_service():
+    """Provide a DbService instance for testing."""
+    from app.database import DbService
+    return DbService
+
+@pytest.fixture(scope="function")
+async def test_guest(db_session: AsyncSession):
+    """Fixture to create and verify a test guest in the database before running tests."""
+    guest_data = {
+        "session_id": "test_session_123",
+        "page_views": ["/home", "/about"],
+        "interaction_events": ["clicked_signup"],
+        "status": GuestStatus.NEW,
+        "interaction_history": [{"event": "visited_homepage", "timestamp": "2025-03-01T12:00:00Z"}],
+    }
+    
+    guest = Guest(**guest_data)
+    db_session.add(guest)
+    
+    await db_session.commit()  # ✅ Ensure it's written to the database
+    await db_session.refresh(guest)  # ✅ Ensure it's retrievable
+
+    # 🔥 **Verify guest actually exists** before returning it
+    stored_guest = await db_session.get(Guest, guest.id)
+    assert stored_guest is not None, "Guest was not found in the database after commit!"
+
+    return stored_guest

@@ -58,10 +58,10 @@ def test_invalid_email_validation(invalid_email, valid_registration_data):
     with pytest.raises(ValidationError):
         UserCreate(**data)
 
-def test_nickname_generation(valid_registration_data):
-    """Test that nickname is automatically generated from email if not provided."""
+def test_nickname_defaults_to_none(valid_registration_data):
+    """Test that nickname defaults to None if not provided."""
     user = UserCreate(**valid_registration_data)
-    assert user.nickname == "johndoe"  # Based on the email john.doe@example.com
+    assert user.nickname is None  # Nickname should be None by default
 
 @pytest.mark.parametrize("valid_nickname", [
     "user123",

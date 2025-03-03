@@ -65,23 +65,25 @@ class UserCreate(BaseModel):
             raise ValueError("string does not match regex")
         return v
 
-    @model_validator(mode='before')
-    @classmethod
-    def generate_nickname(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate a nickname from email if not provided."""
-        if isinstance(data, dict) and not data.get('nickname') and 'email' in data:
-            # Take the part before @ and remove special characters
-            email_name = data['email'].split('@')[0]
-            import re
-            data['nickname'] = re.sub(r'[^a-zA-Z0-9_-]', '', email_name)
-        return data
-
 class UserResponse(UserBase):
     """Schema for user response after registration."""
     id: UUID
     email_verified: bool = Field(default=False)
     created_at: datetime
     updated_at: datetime
+
+class LoginRequest(BaseModel):
+    email: str = Field(...)
+    password: str = Field(...)
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "email": "user@example.com",
+                "password": "SecurePass123!"
+            }
+        }
+    )
 
 class ErrorResponse(BaseModel):
     """Schema for API error responses."""

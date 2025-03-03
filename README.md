@@ -19,6 +19,11 @@ cd theoforge-be
 docker compose up -d --build
 ```
 
+This command will:
+- Build and start all services defined in docker-compose.yml
+- Automatically run database migrations using Alembic when the API service starts
+- Make the API available at http://localhost:8000
+
 ### Services
 
 The following services will be available:
@@ -77,9 +82,11 @@ docker compose logs -f api  # Just the API service
 # Reset database (removes all data and volumes)
 docker compose down -v
 
-# Run database migrations
-docker compose exec api alembic upgrade head
+# Create a new migration
+docker compose exec api alembic revision --autogenerate -m "description of changes"
 ```
+
+Note: Database migrations are now automatically applied when the API service starts. You no longer need to manually run `docker compose exec api alembic upgrade head`.
 
 ### Testing Commands
 
@@ -98,7 +105,6 @@ docker compose exec api pytest tests/path/to/test_file.py
    ```bash
    docker compose down -v
    docker compose up -d
-   docker compose exec api alembic upgrade head
    ```
 3. Run tests:
    ```bash
@@ -119,7 +125,6 @@ If you encounter issues:
    ```bash
    docker compose down -v
    docker compose up -d --build
-   docker compose exec api alembic upgrade head
    ```
 
 3. Verify database connection:
@@ -133,39 +138,54 @@ If you encounter issues:
 - `GET /`: Returns "Hello World"
 - `GET /health`: Health check endpoint that also verifies database connectivity
 - `POST /auth/register`: Register a new user
+- `GET /guests`: Retrieve all guests
+- `POST /guests`: Create a new guest
+- `GET /guests/{guest_id}`: Retrieve a specific guest
+- `PUT /guests/{guest_id}`: Update a guest
+- `DELETE /guests/{guest_id}`: Delete a guest
 
 ## Project Structure
 
 ```
 .
-├── app/
-│   ├── auth/                    # Authentication components
-│   │   ├── dependencies.py      
-│   │   └── __init__.py
-│   ├── core/                    
-│   │   └── security.py         # Password hashing 
-│   ├── models/                  # Database models
-│   │   └── user.py            
-│   ├── schemas/                 # Pydantic schemas
-│   │   └── user.py            
-│   ├── operations/             # Business logic operations
-│   │   └── user.py            
-│   ├── database.py            # Database configuration + session
-│   └── main.py                # FastAPI application
-├── alembic/                    # Database migrations
-│   ├── versions/              
+
+├── app/                       # Main application package
+│   ├── core/                  # Core functionality
+│   │   └── security.py        # Password hashing and security utilities
+│   ├── models/                # Database models (SQLAlchemy)
+│   │   ├── user.py            
+│   │   └── guest.py           
+│   ├── operations/            # Business logic operations
+│   │   ├── user.py            
+│   │   └── guest.py           
+│   ├── routers/               # API route definitions     
+│   │   ├── auth.py            # Authentication endpoints
+│   │   ├── dependencies.py    # Router dependencies
+│   │   ├── guest.py           # Guest endpoints
+│   │   └── user.py            # User endpoints
+│   ├── schemas/               # Pydantic schemas for validation
+│   │   ├── user.py            
+│   │   └── guest.py           
+│   ├── database.py            # Database configuration and session
+│   └── main.py                # FastAPI application entry point
+├── alembic/                   # Database migrations
+│   ├── versions/              # Migration version files
 │   │   └── 
-│   ├── env.py                
-│   └── script.py.mako        
-├── tests/                      # Test suite
-│   ├── conftest.py            # Test fixtures + configuration
+│   ├── env.py                 # Alembic environment configuration
+│   └── script.py.mako         # Migration script template
+├── settings/                  # Application settings
+│   └── config.py              # Configuration settings
+├── tests/                     # Test suite
 │   ├── integration/           # Integration tests
-│   │   └── test_registration.py
-│   └── unit/                  # Unit tests
-│       └── test_user.py
-├── alembic.ini               
-├── docker-compose.yml         
-├── Dockerfile                
-├── requirements.txt          
-└── README.md                
+│   │   └── test_registration.py  
+│   ├── unit/                  # Unit tests
+│   │   └── test_user.py       
+│   └── conftest.py            # Test fixtures and configuration
+├── .gitignore                 # Git ignore file
+├── alembic.ini                # Alembic configuration
+├── docker-compose.yml         # Docker Compose configuration
+├── Dockerfile                 # Docker image definition
+├── pytest.ini                 # Pytest configuration
+├── requirements.txt           # Python dependencies
+└── README.md                  # Project documentation
 ``` 

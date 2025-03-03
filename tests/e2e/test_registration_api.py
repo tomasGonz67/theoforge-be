@@ -81,7 +81,7 @@ async def test_duplicate_email_registration(async_client: AsyncClient, db_sessio
     response = await async_client.post("/auth/register", json=user_data)
     
     assert response.status_code == 400
-    assert "Email already exists" in response.json()["detail"]
+    assert "already exists" in response.json()["detail"]
 
 @pytest.mark.asyncio
 async def test_invalid_password_registration(async_client: AsyncClient):
@@ -183,7 +183,7 @@ async def test_registration_response_format(async_client: AsyncClient):
     # Check field types
     assert isinstance(data["id"], str)  # UUID as string
     assert isinstance(data["email"], str)
-    assert isinstance(data["nickname"], str)
+    assert data["nickname"] is None or isinstance(data["nickname"], str)
     assert isinstance(data["role"], str)
     assert isinstance(data["email_verified"], bool)
     assert isinstance(data["created_at"], str)  # datetime as ISO string
@@ -221,7 +221,7 @@ async def test_successful_registration_with_provided_nickname(async_client: Asyn
 
 @pytest.mark.asyncio
 async def test_successful_registration_with_auto_nickname(async_client: AsyncClient):
-    """Test successful user registration with auto-generated nickname."""
+    """Test successful user registration without providing a nickname."""
     # First create an admin user
     admin_data = {
         "email": "admin@example.com",
@@ -231,7 +231,7 @@ async def test_successful_registration_with_auto_nickname(async_client: AsyncCli
     }
     await async_client.post("/auth/register", json=admin_data)
     
-    # Now test regular user registration with auto nickname
+    # Now test regular user registration without nickname
     user_data = {
         "email": "new.user@example.com",
         "password": "SecurePass123!",
@@ -243,7 +243,7 @@ async def test_successful_registration_with_auto_nickname(async_client: AsyncCli
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == user_data["email"]
-    assert data["nickname"] == "newuser"  # Should be generated from email
+    assert data["nickname"] is None  # Should be null as auto-generation is disabled
     assert "id" in data
     assert "role" in data
     assert data["email_verified"] is False

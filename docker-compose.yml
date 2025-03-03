@@ -40,7 +40,13 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - .:/app
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./tests:/app/tests
+      - ./settings:/app/settings
+      - ./alembic.ini:/app/alembic.ini
+      - ./pytest.ini:/app/pytest.ini
+      - ./requirements.txt:/app/requirements.txt
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,6 +54,8 @@ services:
       - app-network
     environment:
       - DATABASE_URL=postgresql+asyncpg://user:password@postgres:5432/theoforge_dev
+      - PYTHONPATH=/app
+    restart: unless-stopped
 
 volumes:
   postgres-data:
