@@ -4,6 +4,7 @@ from threading import Lock
 from builtins import ValueError, bool
 import logging
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.pool import NullPool
 
 Base = declarative_base()
 logger = logging.getLogger(__name__)
@@ -20,7 +21,10 @@ class Database:
         with cls._lock:  
             if cls._engine is None:
                 cls._engine = create_async_engine(
-                    database_url, echo=echo, future=True
+                    database_url, 
+                    echo=echo, 
+                    future=True,
+                    poolclass=NullPool  # Use NullPool to prevent connection reuse
                 )
                 cls._session_factory = sessionmaker(
                     bind=cls._engine, 

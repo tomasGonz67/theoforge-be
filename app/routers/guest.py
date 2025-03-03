@@ -15,7 +15,7 @@ router = APIRouter(
 @router.post("/", response_model=GuestSchema)
 async def create_guest(guest_data: GuestCreate, db: AsyncSession = Depends(get_db)):
     """Create a new guest entry asynchronously."""
-    guest = await GuestService.create_guest(db, guest_data.dict(exclude={"id"}))
+    guest = await GuestService.create_guest(db, guest_data.model_dump(exclude={"id"}))
     if not guest:
         raise HTTPException(status_code=500, detail="Failed to create guest")
     return guest
@@ -47,7 +47,7 @@ async def update_guest_by_id(guest_id: UUID, guest_update: GuestUpdate, db: Asyn
     guest = await GuestService.get_guest_by_id(db, guest_id)
     if not guest:
         raise HTTPException(status_code=404, detail="Guest not found")
-    updated_guest = await GuestService.update_guest(db, guest, guest_update.dict(exclude_unset=True))
+    updated_guest = await GuestService.update_guest(db, guest, guest_update.model_dump(exclude_unset=True))
     if not updated_guest:
         raise HTTPException(status_code=500, detail="Failed to update guest")
     return updated_guest
@@ -60,7 +60,7 @@ async def update_guest_by_session(session_id: str, guest_update: GuestUpdate, db
         raise HTTPException(status_code=404, detail="Guest not found")
     if isinstance(guest, list):
         raise HTTPException(status_code=400, detail="Multiple guests found for this session ID. Please update individually by ID.")
-    updated_guest = await GuestService.update_guest(db, guest, guest_update.dict(exclude_unset=True))
+    updated_guest = await GuestService.update_guest(db, guest, guest_update.model_dump(exclude_unset=True))
     if not updated_guest:
         raise HTTPException(status_code=500, detail="Failed to update guest")
     return updated_guest
