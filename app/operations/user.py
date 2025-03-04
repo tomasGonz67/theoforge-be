@@ -1,17 +1,15 @@
 from builtins import Exception, bool, classmethod, int, str
 from datetime import datetime
-from typing import Optional, Dict, List, Any
+from typing import Optional, List, Any
 from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 import logging
-import warnings
-from datetime import timezone
 
 from app.models.user import User, UserRole
-from app.schemas.user import UserCreate, UserResponse, ErrorResponse
+from app.schemas.user import UserCreate, UserResponse
 from app.core.security import hash_password, verify_password
 from settings.config import Settings  
 from app.database import DbService
@@ -42,6 +40,12 @@ class UserRepository:
         result = await DbService.execute_query(self.session, query)
         return result.scalars().first() if result else None
     
+    async def get_all_users(self) -> List[User]:
+        """Retrieve all users from the database."""
+        query = select(User)
+        result = await DbService.execute_query(self.session, query)
+        return result.scalars().all() if result else []
+
     async def count(self) -> int:
         """Count total number of users. Used to determine if first user (admin)."""
         query = select(func.count()).select_from(User)
@@ -55,12 +59,17 @@ class UserRepository:
         await self.session.refresh(user)
         return user
 
+    async def delete(self, user: User) -> None:
+        """Delete a user."""
+        await self.session.delete(user)
+        await DbService.commit(self.session)
+
 # Registration service
 class RegistrationService:
     def __init__(self, repository: UserRepository):
         self.repository = repository
     
-    async def register_user(self, user_data: Dict[str, Any]) -> Optional[User]:
+    async def register_user(self, user_data: dict) -> Optional[User]:
         """Register a new user with the provided data."""
         try:
             # Validate user data
@@ -106,31 +115,3 @@ class AuthenticationService:
             if verify_password(password, user.hashed_password):
                 return await self.repository.save(user)
         return None
-
-# The UserService class has been removed as it's no longer needed.
-# All functionality has been moved to the specialized service classes above.
-
-"""
-Changes made for service extension implementation:
-1. Separated concerns into three main classes:
-   - UserRepository: Handles database operations
-   - RegistrationService: Manages user registration
-   - AuthenticationService: Handles login and authentication
-   
-2. Each class has clear responsibilities:
-   - Repository: Data access and persistence
-   - Services: Business logic
-   
-3. Complete migration from monolithic UserService:
-   - UserService class completely removed
-   - All functionality moved to specialized services
-   
-4. Benefits:
-   - Clear separation of concerns
-   - Testability through dependency injection
-   - More maintainable and extensible code
-
-5. Database abstraction improvements:
-   - Removed repository-specific _execute_query method
-   - Using centralized DbService for all database operations
-"""
