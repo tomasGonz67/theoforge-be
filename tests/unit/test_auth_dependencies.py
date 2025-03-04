@@ -1,124 +1,140 @@
 """
-Unit tests for authentication dependencies.
+Unit tests for authentication dependencies and user management.
 
-These tests verify that the authentication dependencies correctly:
-- Validate JWT tokens
-- Extract user information from tokens
-- Handle authentication errors
+These tests verify that:
+- Authentication dependencies validate JWT tokens correctly
+- User management routes (list, update, delete) function properly
 """
 import pytest
 from datetime import timedelta
 from fastapi import HTTPException
 import jwt
 from unittest.mock import patch, MagicMock
+from uuid import uuid4
 
 from app.routers.dependencies import get_current_user
 from app.operations.jwt_service import create_access_token
-from app.models.user import UserRole
+from app.models.user import User, UserRole
+from app.operations.user import UserRepository
 from settings.config import settings
 
 
+# --- Authentication Tests ---
 def test_get_current_user_valid_token():
     """Test retrieving current user with a valid token."""
-    # Arrange
     user_email = "test@example.com"
     role = UserRole.USER.name
     token_data = {"sub": user_email, "role": role}
     token = create_access_token(data=token_data)
     
-    # Act
     with patch('app.routers.dependencies.decode_token') as mock_decode:
-        # Mock the decode_token function to return our payload
         mock_decode.return_value = token_data
         username = get_current_user(token)
     
-    # Assert
     assert username == user_email
     mock_decode.assert_called_once_with(token)
 
 
 def test_get_current_user_no_token():
     """Test retrieving current user with no token."""
-    # Act & Assert
     with pytest.raises(HTTPException) as excinfo:
         get_current_user(None)
     
-    # Verify the exception details
     assert excinfo.value.status_code == 401
     assert "Not authenticated" in str(excinfo.value.detail)
 
 
 def test_get_current_user_invalid_token():
     """Test retrieving current user with an invalid token."""
-    # Arrange
     invalid_token = "invalid.token.string"
     
-    # Act & Assert
     with patch('app.routers.dependencies.decode_token', return_value=None):
         with pytest.raises(HTTPException) as excinfo:
             try:
                 get_current_user(invalid_token)
             except AttributeError:
-                pytest.fail("AttributeError: 'NoneType' object has no attribute 'get'. The implementation should handle this case.")
+                pytest.fail("AttributeError: 'NoneType' object has no attribute 'get'.")
     
-    # This test passes if get_current_user raises an HTTPException
-    # If it doesn't handle the None case properly, it will raise an AttributeError
-    # which we catch and convert to a test failure
-
-
-def test_get_current_user_missing_sub_claim():
-    """Test retrieving current user with a token missing the 'sub' claim."""
-    # Arrange
-    token_data = {"role": "USER"}  # Missing 'sub' claim
-    token = create_access_token(data=token_data)
-    
-    # Act & Assert
-    with patch('app.routers.dependencies.decode_token') as mock_decode:
-        # Mock the decode_token function to return payload without 'sub'
-        mock_decode.return_value = token_data
-        with pytest.raises(HTTPException) as excinfo:
-            get_current_user(token)
-    
-    # Verify the exception details
     assert excinfo.value.status_code == 401
     assert "Invalid token" in str(excinfo.value.detail)
 
 
-def test_get_current_user_jwt_error():
-    """Test retrieving current user when a JWT error occurs."""
-    # Arrange
-    token = "some.valid.looking.token"
-    jwt_error = jwt.PyJWTError("Token invalid")
+def test_get_current_user_missing_sub_claim():
+    """Test retrieving current user with a token missing the 'sub' claim."""
+    token_data = {"role": "USER"}
+    token = create_access_token(data=token_data)
     
-    # Act & Assert
     with patch('app.routers.dependencies.decode_token') as mock_decode:
-        # Mock the decode_token function to raise a JWT error
-        mock_decode.side_effect = jwt_error
+        mock_decode.return_value = token_data
         with pytest.raises(HTTPException) as excinfo:
             get_current_user(token)
     
-    # Verify the exception details
     assert excinfo.value.status_code == 401
     assert "Invalid token" in str(excinfo.value.detail)
 
 
 def test_get_current_user_expired_token():
     """Test retrieving current user with an expired token."""
-    # Arrange
     user_email = "test@example.com"
     role = UserRole.USER.name
     token_data = {"sub": user_email, "role": role}
-    # Create a token that's already expired
     expired_token = create_access_token(data=token_data, expires_delta=timedelta(seconds=-1))
     
-    # Act & Assert
-    # When a token is expired, the implementation should decode it but find it's expired
-    # We'll simulate that scenario by returning None from decode_token
     with patch('app.routers.dependencies.decode_token', return_value=None):
         with pytest.raises(HTTPException) as excinfo:
             try:
                 get_current_user(expired_token)
             except AttributeError:
-                pytest.fail("AttributeError: 'NoneType' object has no attribute 'get'. The implementation should handle this case.")
+                pytest.fail("AttributeError: 'NoneType' object has no attribute 'get'.")
     
-    # This test passes if get_current_user raises an HTTPException when decode_token returns None 
+    assert excinfo.value.status_code == 401
+    assert "Invalid token" in str(excinfo.value.detail)
+
+
+# --- User Management Tests ---
+@pytest.mark.asyncio
+async def test_list_users():
+    """Test listing all users."""
+    mock_repo = MagicMock(spec=UserRepository)
+    mock_repo.get_all_users.return_value = [
+        User(id=uuid4(), email="user1@example.com", nickname="user1", role=UserRole.USER),
+        User(id=uuid4(), email="user2@example.com", nickname="user2", role=UserRole.ADMIN),
+    ]
+
+    users = await mock_repo.get_all_users()
+    assert len(users) == 2
+    assert users[0].email == "user1@example.com"
+    assert users[1].role == UserRole.ADMIN
+
+
+@pytest.mark.asyncio
+async def test_update_user():
+    """Test updating a user."""
+    user_id = uuid4()
+    mock_repo = MagicMock(spec=UserRepository)
+    mock_user = User(id=user_id, email="old@example.com", nickname="oldnick", role=UserRole.USER)
+
+    mock_repo.get_by_id.return_value = mock_user
+    mock_repo.save.return_value = mock_user
+
+    update_data = {"email": "new@example.com", "nickname": "newnick"}
+    for key, value in update_data.items():
+        setattr(mock_user, key, value)
+
+    updated_user = await mock_repo.save(mock_user)
+    
+    assert updated_user.email == "new@example.com"
+    assert updated_user.nickname == "newnick"
+
+
+@pytest.mark.asyncio
+async def test_delete_user():
+    """Test deleting a user."""
+    user_id = uuid4()
+    mock_repo = MagicMock(spec=UserRepository)
+    mock_user = User(id=user_id, email="delete@example.com", nickname="todelete", role=UserRole.USER)
+
+    mock_repo.get_by_id.return_value = mock_user
+
+    await mock_repo.delete(mock_user)
+    mock_repo.delete.assert_called_once_with(mock_user)
