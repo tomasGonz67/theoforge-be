@@ -44,3 +44,6 @@ pgadmin-data/
 # Environment variables
 .env
 .env.local 
+
+# Fronend
+frontend/

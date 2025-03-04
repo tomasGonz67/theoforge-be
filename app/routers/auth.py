@@ -4,9 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
 
 from app.schemas.user import UserCreate, UserResponse
-from app.schemas.token_schema import TokenResponse
 from app.operations.jwt_service import create_access_token
-from app.routers.dependencies import get_db, get_registration_service, get_auth_service, get_current_user
+from app.routers.dependencies import get_registration_service, get_auth_service, get_current_user
 from settings.config import settings
 
 # Create a router for auth endpoints
@@ -38,16 +37,6 @@ async def register(
             detail=str(e)
         ) 
 
-# Simulated user database for FastAPI example
-# DELETE THIS
-# TODO: Use database for user login
-users_db = {
-    "user@example.com": {
-        "username": "user@example.com",
-        "password": "Secure*1234",
-    }
-}
-
 # Creating a JSON Response (to then set a HTTP-only cookie after immediate use by frontend)
 @router.post("/login")
 async def login(
@@ -74,35 +63,6 @@ async def login(
 
     return {"access_token": access_token, "token_type": "bearer"}
 
-# Set cookie after creating JSON response and immediate frontend handling (second step of Method #1)
-# Frontend can retrieve requests afterward by having ' credentials: "include" ' in fetch
-@router.post("/set-cookie")
-async def set_cookie(token_data: TokenResponse, response: Response):
-    '''
-    Set a cookie from TokenResponse
-    '''
-
-    try:
-        
-        access_token = token_data.access_token
-
-        if not access_token:
-            raise HTTPException(status_code=400, detail="Missing token")
-
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,  # JavaScript cannot access this
-            secure=False, # set to true in prod
-            samesite="Lax"
-        )
-        
-    except Exception as e:
-        print(f"Error in set_cookie: {str(e)}")  # Log the error for debugging
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-    
-    return {"message": "set-cookie test"}
-
 # When protecting certain routes using JWT authentication with the cookie
 @router.get("/auth")
 async def auth_route(username: str = Depends(get_current_user)):
@@ -116,7 +76,6 @@ async def auth_route(username: str = Depends(get_current_user)):
     return {"message": "You have access!", "username": username}
 
 # Clears cookie when logging out
-@router.post("/logout/cookie")
+@router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie("access_token")
     return {"message": "Logged out successfully"}
