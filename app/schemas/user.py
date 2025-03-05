@@ -1,9 +1,9 @@
 from datetime import datetime
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator, ConfigDict
+from typing import Optional
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from uuid import UUID
 
-from app.models.user import UserRole
+from app.models.user import UserRole, SubscriptionPlan
 
 class UserBase(BaseModel):
     """Base schema for User with common attributes."""
@@ -13,8 +13,6 @@ class UserBase(BaseModel):
     last_name: Optional[str] = Field(None, description="User's last name")
     role: UserRole
 
-    model_config = ConfigDict(from_attributes=True)
-
 class UserCreate(BaseModel):
     """Schema for user registration with password validation."""
     email: EmailStr = Field(..., description="User's email address")
@@ -22,18 +20,6 @@ class UserCreate(BaseModel):
     nickname: Optional[str] = Field(None, description="User's nickname")
     first_name: Optional[str] = Field(None, description="User's first name")
     last_name: Optional[str] = Field(None, description="User's last name")
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "email": "user@example.com",
-                "password": "SecurePass123!",
-                "nickname": "johndoe",
-                "first_name": "John",
-                "last_name": "Doe"
-            }
-        }
-    )
 
     @field_validator("password")
     @classmethod
@@ -51,18 +37,27 @@ class UserCreate(BaseModel):
             raise ValueError("Password must contain at least one special character")
         return v
 
-    @field_validator("nickname")
+class UserUpdate(BaseModel):
+    """Schema for user profile update."""
+    phone_number: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    card_number: Optional[str] = None
+    ccv: Optional[str] = None
+    security_code: Optional[str] = None
+    subscription_plan: Optional[str] = None
+
+    @field_validator("subscription_plan")
     @classmethod
-    def validate_nickname(cls, v: Optional[str]) -> Optional[str]:
-        """Validate nickname format."""
-        if v is None:
-            return v
-        if len(v) < 3:
-            raise ValueError("ensure this value has at least 3 characters")
-        if len(v) > 50:
-            raise ValueError("ensure this value has at most 50 characters")
-        if not v.replace("-", "").replace("_", "").isalnum():
-            raise ValueError("string does not match regex")
+    def validate_subscription_plan(cls, v: Optional[str]) -> Optional[str]:
+        """Ensure subscription_plan is one of the valid options."""
+        if v is not None:
+            valid_plans = {plan.name for plan in SubscriptionPlan}
+            if v.upper() not in valid_plans:
+                raise ValueError("Invalid subscription plan")
+            return v.upper()
         return v
 
 class UserResponse(UserBase):
@@ -72,46 +67,7 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: datetime
 
-class LoginRequest(BaseModel):
-    email: str = Field(...)
-    password: str = Field(...)
-    
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "email": "user@example.com",
-                "password": "SecurePass123!"
-            }
-        }
-    )
-
 class ErrorResponse(BaseModel):
     """Schema for API error responses."""
     error: str = Field(..., description="Error type")
     details: Optional[str] = Field(None, description="Detailed error message")
-
-"""
-Changes made to align with User model:
-1. Pydantic v2 compatibility:
-   - Using ConfigDict instead of deprecated Config class
-   - Updated field_validator and model_validator decorators
-   - Schema configuration with model_config
-
-2. Improved validation:
-   - Strong password requirements with detailed error messages
-   - Nickname format validation with specific error messages
-   - Email validation using EmailStr
-
-3. Schema organization:
-   - Base schema (UserBase) for common attributes
-   - Creation schema (UserCreate) with password handling
-   - Response schema (UserResponse) for API outputs
-   - Error schema (ErrorResponse) for consistent error handling
-
-5. Removed non-registration functionality:
-   - Profile fields (bio, URLs)
-   - Professional status
-   - Login-related fields
-   - CRUD operations (UserUpdate, UserListResponse)
-   - Auth-related schemas (LoginRequest)
-"""

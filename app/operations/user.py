@@ -8,11 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 import logging
 
-from app.models.user import User, UserRole
-from app.schemas.user import UserCreate, UserResponse
+from app.models.user import User, UserRole, SubscriptionPlan
+from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.core.security import hash_password, verify_password
 from settings.config import Settings  
 from app.database import DbService
+from app.operations.jwt_service import decode_token
 
 settings = Settings()  
 logger = logging.getLogger(__name__)
@@ -92,7 +93,16 @@ class RegistrationService:
             new_user = User(
                 **validated_data,
                 role=role,
-                email_verified=(role == UserRole.ADMIN)  # True for admin, False for regular users
+                email_verified=(role == UserRole.ADMIN),  # True for admin, False for regular users
+                subscription_plan=SubscriptionPlan.FREE,  # Default plan
+                phone_number=None,
+                address=None,
+                city=None,
+                state=None,
+                zip_code=None,
+                card_number=None,
+                ccv=None,
+                security_code=None
             )
             
             return await self.repository.save(new_user)
@@ -114,4 +124,47 @@ class AuthenticationService:
                 return None
             if verify_password(password, user.hashed_password):
                 return await self.repository.save(user)
+        return None
+
+# Profile Update service
+class ProfileUpdateService:
+    def __init__(self, repository: UserRepository):
+        self.repository = repository
+    
+    async def update_profile(self, user_id: UUID, user_data: dict) -> Optional[User]:
+        """Update user's profile details after registration."""
+        user = await self.repository.get_by_id(user_id)
+        if not user:
+            return None
+        
+        # Ensure subscription_plan is converted to a valid enum value
+        if "subscription_plan" in user_data and user_data["subscription_plan"]:
+            try:
+                user_data["subscription_plan"] = SubscriptionPlan[user_data["subscription_plan"].upper()]
+            except KeyError:
+                raise ValueError("Invalid subscription plan value")
+        
+        for key, value in user_data.items():
+            setattr(user, key, value)
+        
+        return await self.repository.save(user)
+
+# Token-based user retrieval service
+def get_current_user(access_token: str) -> Optional[User]:
+    """Retrieve current user based on access token."""
+    try:
+        payload = decode_token(access_token)
+        if not payload:
+            return None
+        
+        email: str = payload.get("sub")
+        if not email:
+            return None
+        
+        db = Database.get_session_factory()()
+        user_repo = UserRepository(db)
+        user = user_repo.get_by_email(email)
+        return user
+    except Exception as e:
+        logger.error(f"Error decoding token: {str(e)}")
         return None

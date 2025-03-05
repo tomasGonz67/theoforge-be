@@ -1,11 +1,11 @@
 from builtins import Exception
 from fastapi import HTTPException, Cookie, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.database import Database
+from sqlalchemy.exc import SQLAlchemyError
 from jose import JWTError
+from app.database import Database
 from app.operations.jwt_service import decode_token
 from settings.config import Settings
-from sqlalchemy.exc import SQLAlchemyError
 
 async def get_db() -> AsyncSession:
     """Dependency that provides a database session for each request."""
@@ -22,8 +22,9 @@ async def get_db() -> AsyncSession:
         finally:
             await session.close()
 
-# Retrieve current user based on access_token via cookie
-def get_current_user(access_token: str = Cookie(None)):
+# Retrieve current user from access_token
+async def get_current_user(access_token: str = Cookie(None), db: AsyncSession = Depends(get_db)):
+    """Extract the current user from JWT stored in a cookie."""
     if access_token is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
@@ -32,18 +33,26 @@ def get_current_user(access_token: str = Cookie(None)):
         if payload is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        username: str = payload.get("sub")
-        if username is None:
+        email: str = payload.get("sub")
+        if email is None:
             raise HTTPException(status_code=401, detail="Invalid token")
-        return username
-    except Exception:
+        
+        from app.operations.user import UserRepository
+        user_repo = UserRepository(db)
+        user = await user_repo.get_by_email(email)
+        
+        if user is None:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        return user
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 def get_settings() -> Settings:
     """Return application settings."""
     return Settings()
 
-# New service dependencies with imports inside the functions to avoid circular imports
+# New service dependencies to avoid circular imports
 def get_user_repository(db: AsyncSession = Depends(get_db)):
     """Dependency that provides a UserRepository instance."""
     from app.operations.user import UserRepository

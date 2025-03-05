@@ -5,13 +5,13 @@ from datetime import timedelta
 from uuid import UUID
 from typing import List
 
-from app.schemas.user import UserCreate, UserResponse
+from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.schemas.token_schema import TokenResponse
 from app.operations.jwt_service import create_access_token
 from app.routers.dependencies import get_db, get_registration_service, get_auth_service, get_current_user, get_user_repository
 from settings.config import settings
 from app.models.user import User
-from app.operations.user import UserRepository
+from app.operations.user import UserRepository, ProfileUpdateService
 
 # Create a router for auth endpoints
 router = APIRouter(prefix="/auth", tags=["Authentication & User"])
@@ -19,9 +19,9 @@ router = APIRouter(prefix="/auth", tags=["Authentication & User"])
 # --- Cookie Management Routes ---
 @router.post("/set-cookie")
 async def set_cookie(token_data: TokenResponse, response: Response):
-    '''
+    """
     Set a cookie from TokenResponse
-    '''
+    """
     try:
         access_token = token_data.access_token
         if not access_token:
@@ -41,11 +41,11 @@ async def set_cookie(token_data: TokenResponse, response: Response):
     return {"message": "set-cookie test"}
 
 @router.get("/auth")
-async def auth_route(username: str = Depends(get_current_user)):
-    '''
+async def auth_route(current_user: User = Depends(get_current_user)):
+    """
     Authenticates user based on cookie
-    '''
-    return {"message": "You have access!", "username": username}
+    """
+    return {"message": "You have access!", "username": current_user.email}
 
 @router.post("/logout/cookie")
 async def logout(response: Response):
@@ -79,9 +79,9 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(), 
     auth_service = Depends(get_auth_service)
 ):
-    '''
+    """
     Login to create JSON response for immediate use by frontend and to set cookie afterward
-    '''
+    """
     user = await auth_service.login_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=400, detail="Invalid username/password")
@@ -121,6 +121,24 @@ async def update_user(
     
     updated_user = await user_repo.save(user)
     return updated_user
+
+@router.put("/profile")
+async def update_profile(
+    user_data: UserUpdate, 
+    db: AsyncSession = Depends(get_db), 
+    current_user: User = Depends(get_current_user),
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    """
+    Update user profile with address, phone, and payment info.
+    """
+    profile_service = ProfileUpdateService(user_repo)
+    updated_user = await profile_service.update_profile(current_user.id, user_data.dict(exclude_unset=True))
+
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {"message": "Profile updated successfully"}
 
 @router.delete("/users/{user_id}")
 async def delete_user(user_id: UUID, user_repo: UserRepository = Depends(get_user_repository)):
