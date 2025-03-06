@@ -1,12 +1,12 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Response, Cookie
+from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
 
 from app.schemas.user import UserCreate, UserResponse
-from app.schemas.token_schema import TokenResponse
 from app.operations.jwt_service import create_access_token
-from app.routers.dependencies import get_db, get_registration_service, get_auth_service, get_current_user
+from app.routers.dependencies import get_current_user, get_db
+from app.operations.user import UserRepository, RegistrationService, AuthenticationService
 from settings.config import settings
 
 # Create a router for auth endpoints
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 )
 async def register(
     user_create: UserCreate,
-    registration_service = Depends(get_registration_service)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Register a new user.
@@ -30,6 +30,9 @@ async def register(
     - First user gets ADMIN role, others get USER role
     """
     try:
+        user_repo = UserRepository(db)
+        registration_service = RegistrationService(user_repo)
+        
         user = await registration_service.register_user(user_create.model_dump())
         return user
     except ValueError as e:
@@ -38,29 +41,24 @@ async def register(
             detail=str(e)
         ) 
 
-# Simulated user database for FastAPI example
-# DELETE THIS
-# TODO: Use database for user login
-users_db = {
-    "user@example.com": {
-        "username": "user@example.com",
-        "password": "Secure*1234",
-    }
-}
-
-# Creating a JSON Response (to then set a HTTP-only cookie after immediate use by frontend)
+# Login endpoint that returns JWT token
 @router.post("/login")
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(), 
-    auth_service = Depends(get_auth_service)
+    db: AsyncSession = Depends(get_db),
+    form_data: OAuth2PasswordRequestForm = Depends()
 ):
     '''
-    Login to create JSON response for immediate use by frontend and to set cookie afterward
-
-        - username: user@example.com
-        - password: SecurePass123!
+    Login to get an access token for authenticated API requests
+    
+    - username: user@example.com
+    - password: SecurePass123!
+    
+    Returns a JWT token that should be included in the Authorization header
+    for subsequent requests as: "Bearer {token}"
     '''
-
+    user_repo = UserRepository(db)
+    auth_service = AuthenticationService(user_repo)
+    
     user = await auth_service.login_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=400, detail="Invalid username/password")
@@ -74,49 +72,24 @@ async def login(
 
     return {"access_token": access_token, "token_type": "bearer"}
 
-# Set cookie after creating JSON response and immediate frontend handling (second step of Method #1)
-# Frontend can retrieve requests afterward by having ' credentials: "include" ' in fetch
-@router.post("/set-cookie")
-async def set_cookie(token_data: TokenResponse, response: Response):
-    '''
-    Set a cookie from TokenResponse
-    '''
-
-    try:
-        
-        access_token = token_data.access_token
-
-        if not access_token:
-            raise HTTPException(status_code=400, detail="Missing token")
-
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,  # JavaScript cannot access this
-            secure=False, # set to true in prod
-            samesite="Lax"
-        )
-        
-    except Exception as e:
-        print(f"Error in set_cookie: {str(e)}")  # Log the error for debugging
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-    
-    return {"message": "set-cookie test"}
-
-# When protecting certain routes using JWT authentication with the cookie
+# Protected route that requires authentication
 @router.get("/auth")
 async def auth_route(username: str = Depends(get_current_user)):
     '''
-    Authenticates user based on cookie
-
-        - Uses encoded JWT in cookie for protected path check
-        - Validates token through get_current_user dependency
-    '''
+    Authenticates user based on JWT token in Authorization header
     
+    - Requires a valid JWT token in the Authorization header as "Bearer {token}"
+    - Returns user information if authentication is successful
+    '''
     return {"message": "You have access!", "username": username}
 
-# Clears cookie when logging out
-@router.post("/logout/cookie")
-async def logout(response: Response):
-    response.delete_cookie("access_token")
+# Simple logout endpoint (note: actual token invalidation would be handled by the frontend)
+@router.post("/logout")
+async def logout():
+    '''
+    Logout endpoint
+    
+    Note: Since we're using JWT tokens, actual token management is handled by the frontend.
+    The backend doesn't maintain session state, so this endpoint is provided for API completeness.
+    '''
     return {"message": "Logged out successfully"}

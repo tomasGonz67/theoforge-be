@@ -1,20 +1,19 @@
 from builtins import Exception, bool, classmethod, int, str
 from datetime import datetime
-from typing import Optional, Dict, List, Any
+from typing import Optional, List, Any
 from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 import logging
-import warnings
-from datetime import timezone
 
-from app.models.user import User, UserRole
-from app.schemas.user import UserCreate, UserResponse, ErrorResponse
+from app.models.user import User, UserRole, SubscriptionPlan
+from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.core.security import hash_password, verify_password
 from settings.config import Settings  
 from app.database import DbService
+from app.operations.jwt_service import decode_token
 
 settings = Settings()  
 logger = logging.getLogger(__name__)
@@ -42,6 +41,12 @@ class UserRepository:
         result = await DbService.execute_query(self.session, query)
         return result.scalars().first() if result else None
     
+    async def get_all_users(self) -> List[User]:
+        """Retrieve all users from the database."""
+        query = select(User)
+        result = await DbService.execute_query(self.session, query)
+        return result.scalars().all() if result else []
+
     async def count(self) -> int:
         """Count total number of users. Used to determine if first user (admin)."""
         query = select(func.count()).select_from(User)
@@ -55,12 +60,17 @@ class UserRepository:
         await self.session.refresh(user)
         return user
 
+    async def delete(self, user: User) -> None:
+        """Delete a user."""
+        await self.session.delete(user)
+        await DbService.commit(self.session)
+
 # Registration service
 class RegistrationService:
     def __init__(self, repository: UserRepository):
         self.repository = repository
     
-    async def register_user(self, user_data: Dict[str, Any]) -> Optional[User]:
+    async def register_user(self, user_data: dict) -> Optional[User]:
         """Register a new user with the provided data."""
         try:
             # Validate user data
@@ -83,7 +93,16 @@ class RegistrationService:
             new_user = User(
                 **validated_data,
                 role=role,
-                email_verified=(role == UserRole.ADMIN)  # True for admin, False for regular users
+                email_verified=(role == UserRole.ADMIN),  # True for admin, False for regular users
+                subscription_plan=SubscriptionPlan.FREE,  # Default plan
+                phone_number=None,
+                address=None,
+                city=None,
+                state=None,
+                zip_code=None,
+                card_number=None,
+                ccv=None,
+                security_code=None
             )
             
             return await self.repository.save(new_user)
@@ -107,30 +126,45 @@ class AuthenticationService:
                 return await self.repository.save(user)
         return None
 
-# The UserService class has been removed as it's no longer needed.
-# All functionality has been moved to the specialized service classes above.
+# Profile Update service
+class ProfileUpdateService:
+    def __init__(self, repository: UserRepository):
+        self.repository = repository
+    
+    async def update_profile(self, user_id: UUID, user_data: dict) -> Optional[User]:
+        """Update user's profile details after registration."""
+        user = await self.repository.get_by_id(user_id)
+        if not user:
+            return None
+        
+        # Ensure subscription_plan is converted to a valid enum value
+        if "subscription_plan" in user_data and user_data["subscription_plan"]:
+            try:
+                user_data["subscription_plan"] = SubscriptionPlan[user_data["subscription_plan"].upper()]
+            except KeyError:
+                raise ValueError("Invalid subscription plan value")
+        
+        for key, value in user_data.items():
+            setattr(user, key, value)
+        
+        return await self.repository.save(user)
 
-"""
-Changes made for service extension implementation:
-1. Separated concerns into three main classes:
-   - UserRepository: Handles database operations
-   - RegistrationService: Manages user registration
-   - AuthenticationService: Handles login and authentication
-   
-2. Each class has clear responsibilities:
-   - Repository: Data access and persistence
-   - Services: Business logic
-   
-3. Complete migration from monolithic UserService:
-   - UserService class completely removed
-   - All functionality moved to specialized services
-   
-4. Benefits:
-   - Clear separation of concerns
-   - Testability through dependency injection
-   - More maintainable and extensible code
-
-5. Database abstraction improvements:
-   - Removed repository-specific _execute_query method
-   - Using centralized DbService for all database operations
-"""
+# Token-based user retrieval service
+def get_current_user(access_token: str) -> Optional[User]:
+    """Retrieve current user based on access token."""
+    try:
+        payload = decode_token(access_token)
+        if not payload:
+            return None
+        
+        email: str = payload.get("sub")
+        if not email:
+            return None
+        
+        db = Database.get_session_factory()()
+        user_repo = UserRepository(db)
+        user = user_repo.get_by_email(email)
+        return user
+    except Exception as e:
+        logger.error(f"Error decoding token: {str(e)}")
+        return None

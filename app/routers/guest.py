@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Union
 from uuid import UUID
 
-from app.database import get_db
+from app.routers.dependencies import get_db
 from app.operations.guest import GuestService
 from app.schemas.guest import GuestCreate, GuestSchema, GuestUpdate
 
