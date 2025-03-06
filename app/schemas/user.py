@@ -60,18 +60,6 @@ class UserUpdate(BaseModel):
             return v.upper()
         return v
 
-
-    @field_validator("subscription_plan")
-    @classmethod
-    def validate_subscription_plan(cls, v: Optional[str]) -> Optional[str]:
-        """Ensure subscription_plan is one of the valid options."""
-        if v is not None:
-            valid_plans = {plan.name for plan in SubscriptionPlan}
-            if v.upper() not in valid_plans:
-                raise ValueError("Invalid subscription plan")
-            return v.upper()
-        return v
-
 class UserResponse(UserBase):
     """Schema for user response after registration."""
     id: UUID
