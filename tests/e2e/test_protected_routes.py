@@ -65,7 +65,10 @@ async def test_protected_route_with_valid_token(test_client, valid_user_token, s
         "/auth/auth",
         headers={"Authorization": f"Bearer {valid_user_token}"}
     )
-    assert response.status_code == 200, f"Unexpected response: {response.json()}"
+    assert response.status_code == 200
+    data = response.json()
+    assert "username" in data
+    assert data["username"] == "user@example.com"
 
 @pytest.mark.asyncio
 async def test_protected_route_without_token(test_client):
@@ -81,7 +84,7 @@ async def test_protected_route_with_expired_token(test_client, expired_token, se
         "/auth/auth",
         headers={"Authorization": f"Bearer {expired_token}"}
     )
-    assert response.status_code == 401, f"Unexpected response: {response.json()}"
+    assert response.status_code == 401
     assert "Invalid token" in response.text or "Not authenticated" in response.text
 
 @pytest.mark.asyncio
@@ -91,7 +94,7 @@ async def test_admin_route_with_admin_token(test_client, valid_admin_token, setu
         "/auth/auth",
         headers={"Authorization": f"Bearer {valid_admin_token}"}
     )
-    assert response.status_code == 200, f"Unexpected response: {response.json()}"
+    assert response.status_code == 200
     data = response.json()
     assert "username" in data
     assert data["username"] == "admin@example.com"

@@ -56,18 +56,4 @@ def get_settings() -> Settings:
     """Return application settings."""
     return Settings()
 
-# New service dependencies to avoid circular imports
-def get_user_repository(db: AsyncSession = Depends(get_db)):
-    """Dependency that provides a UserRepository instance."""
-    from app.operations.user import UserRepository
-    return UserRepository(db)
-
-def get_registration_service(repository = Depends(get_user_repository)):
-    """Dependency that provides a RegistrationService instance."""
-    from app.operations.user import RegistrationService
-    return RegistrationService(repository)
-
-def get_auth_service(repository = Depends(get_user_repository)):
-    """Dependency that provides an AuthenticationService instance."""
-    from app.operations.user import AuthenticationService
-    return AuthenticationService(repository)
+# Remove redundant dependency injection functions and let routes create repositories and services directly

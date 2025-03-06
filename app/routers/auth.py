@@ -5,7 +5,8 @@ from datetime import timedelta
 
 from app.schemas.user import UserCreate, UserResponse
 from app.operations.jwt_service import create_access_token
-from app.routers.dependencies import get_registration_service, get_auth_service, get_current_user
+from app.routers.dependencies import get_current_user, get_db
+from app.operations.user import UserRepository, RegistrationService, AuthenticationService
 from settings.config import settings
 
 # Create a router for auth endpoints
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 )
 async def register(
     user_create: UserCreate,
-    registration_service = Depends(get_registration_service)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Register a new user.
@@ -29,6 +30,9 @@ async def register(
     - First user gets ADMIN role, others get USER role
     """
     try:
+        user_repo = UserRepository(db)
+        registration_service = RegistrationService(user_repo)
+        
         user = await registration_service.register_user(user_create.model_dump())
         return user
     except ValueError as e:
@@ -40,8 +44,8 @@ async def register(
 # Login endpoint that returns JWT token
 @router.post("/login")
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(), 
-    auth_service = Depends(get_auth_service)
+    db: AsyncSession = Depends(get_db),
+    form_data: OAuth2PasswordRequestForm = Depends()
 ):
     '''
     Login to get an access token for authenticated API requests
@@ -52,6 +56,9 @@ async def login(
     Returns a JWT token that should be included in the Authorization header
     for subsequent requests as: "Bearer {token}"
     '''
+    user_repo = UserRepository(db)
+    auth_service = AuthenticationService(user_repo)
+    
     user = await auth_service.login_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=400, detail="Invalid username/password")
