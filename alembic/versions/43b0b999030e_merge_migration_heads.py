@@ -31,7 +31,13 @@ def upgrade() -> None:
     inspector = sa.inspect(conn)
     columns = [c['name'] for c in inspector.get_columns('users')]
     
-    # Only add columns if they don't exist
+    # Add login-related columns from effb157da083
+    if 'failed_login_attempts' not in columns:
+        op.add_column('users', sa.Column('failed_login_attempts', sa.Integer(), nullable=False, server_default='0'))
+    if 'is_locked' not in columns:
+        op.add_column('users', sa.Column('is_locked', sa.Boolean(), nullable=False, server_default='false'))
+    
+    # Add profile-related columns from 803718c7e04e
     if 'phone_number' not in columns:
         op.add_column('users', sa.Column('phone_number', sa.String(length=20), nullable=True))
     if 'address' not in columns:
