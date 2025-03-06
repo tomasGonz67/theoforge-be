@@ -1,6 +1,7 @@
 import pytest
 from datetime import timedelta
 from fastapi import HTTPException
+from jwt import PyJWTError, ExpiredSignatureError
 from unittest.mock import patch, AsyncMock, Mock
 from uuid import uuid4
 from app.routers.dependencies import get_current_user

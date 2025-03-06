@@ -110,7 +110,6 @@ async def test_login_unverified_email(async_client: AsyncClient, db_session: Asy
     assert "Invalid username/password" in data["detail"]
     # Note: We're returning the same error message for security reasons to not leak information
 
-
 @pytest.mark.asyncio
 async def test_login_admin_user(async_client: AsyncClient, admin_user):
     """Test login with admin user."""

@@ -52,29 +52,28 @@ async def test_authentication_service_wrong_password(db_session: AsyncSession, a
 @pytest.mark.asyncio
 async def test_authentication_service_account_lockout(db_session: AsyncSession, authentication_service: AuthenticationService, user_repository: UserRepository, user):
     """Test account lockout after multiple failed attempts."""
-    # Skip this test as account lockout is not implemented yet
-    pytest.skip("Account lockout not implemented yet")
     
     # Arrange
     wrong_password = "WrongPassword123!"
     
-    # Force user to have 4 failed login attempts already
-    # user.failed_login_attempts = 4
-    # await user_repository.save(user)
+    # Force user to have 2 failed login attempts already
+    user.failed_login_attempts = 2
+    user.is_locked = False
+    await db_session.commit()
     
-    # Act - this should be the 5th failed attempt, locking the account
+    # Act - this should be the 3th failed attempt, locking the account
     authenticated_user = await authentication_service.login_user(
         user.email, 
         wrong_password
     )
-    
+
     # Assert
     assert authenticated_user is None
     
     # Verify user is now locked out
-    # updated_user = await user_repository.get_by_id(user.id)
-    # assert updated_user.failed_login_attempts == 5
-    # assert updated_user.is_locked_out()  # User model should have this method
+    updated_user = await user_repository.get_by_id(user.id)
+    assert updated_user.failed_login_attempts == 3
+    assert updated_user.is_locked is True
     
     # Try with correct password, should still fail due to lockout
     authenticated_user = await authentication_service.login_user(
@@ -86,14 +85,11 @@ async def test_authentication_service_account_lockout(db_session: AsyncSession, 
 @pytest.mark.asyncio
 async def test_authentication_service_reset_failed_attempts(db_session: AsyncSession, authentication_service: AuthenticationService, user_repository: UserRepository, user):
     """Test that successful login resets failed attempts."""
-    # Skip this test as account lockout functionality is not implemented yet
-    pytest.skip("Account lockout not implemented yet")
     
-    # Arrange
-    # Set some failed attempts
-    # user.failed_login_attempts = 2
-    # await user_repository.save(user)
-    
+    user.failed_login_attempts = 2
+    user.is_locked = False
+    await db_session.commit()
+
     # Act - successful login
     authenticated_user = await authentication_service.login_user(
         user.email, 
@@ -104,21 +100,19 @@ async def test_authentication_service_reset_failed_attempts(db_session: AsyncSes
     assert authenticated_user is not None
     
     # Verify failed attempts were reset
-    # updated_user = await user_repository.get_by_id(user.id)
-    # assert updated_user.failed_login_attempts == 0
+    updated_user = await user_repository.get_by_id(user.id)
+    assert updated_user.failed_login_attempts == 0
 
 @pytest.mark.asyncio
 async def test_authentication_service_with_locked_user(db_session: AsyncSession, authentication_service: AuthenticationService, user_repository: UserRepository, user):
     """Test authentication with a locked account."""
-    # Skip this test as account lockout functionality is not implemented yet  
-    pytest.skip("Account lockout not implemented yet")
+
+    user.failed_login_attempts = 3
+    user.is_locked = True
+    await db_session.commit()
+
     
-    # Arrange - force user to be locked out
-    # user.failed_login_attempts = 5
-    # await user_repository.save(user)
-    
-    # Assert user is locked out
-    # assert user.is_locked_out()
+    assert user.is_locked is True
     
     # Act - try login with correct password
     authenticated_user = await authentication_service.login_user(
