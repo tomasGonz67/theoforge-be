@@ -168,4 +168,13 @@ async def delete_user(
 
     return {"message": "User deleted successfully"}  # ✅ Now returns a JSON response
 
+# List all users
+@router.get("/users", response_model=list[UserResponse])
+async def list_users(db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve a list of all users.
+    """
+    result = await db.execute(select(User))
+    users = result.scalars().all()
+    return users
 
