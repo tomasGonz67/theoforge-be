@@ -25,22 +25,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="TheoForge API", lifespan=lifespan)
 
-origins=[
-    "http://localhost:5173",
-    "localhost:5173",
-    "http://localhost",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://127.0.0.1:8000/set-cookie",
-    "http://127.0.0.1:8000/auth",
-    "http://127.0.0.1:8000/simple-cookie-test",
-
-]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow frontend origin
-    allow_credentials=True,  # Required for cookies/auth headers
+    allow_credentials=True,  # Required for auth headers
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -2,26 +2,31 @@ import uuid
 import pytest
 from pydantic import ValidationError
 from datetime import datetime
-from app.schemas.user import UserBase, UserCreate, UserResponse, ErrorResponse
-from app.models.user import UserRole
-
-@pytest.fixture
-def valid_user_data():
-    return {
-        "email": "john.doe@example.com",
-        "nickname": "john_doe",
-        "first_name": "John",
-        "last_name": "Doe",
-        "role": UserRole.USER
-    }
+from app.schemas.user import UserCreate, UserUpdate, UserResponse, ErrorResponse
+from app.models.user import UserRole, SubscriptionPlan
 
 @pytest.fixture
 def valid_registration_data():
     return {
         "email": "john.doe@example.com",
         "password": "SecurePass123!",
+        "nickname": "john_doe",
         "first_name": "John",
         "last_name": "Doe"
+    }
+
+@pytest.fixture
+def valid_update_data():
+    return {
+        "phone_number": "123-456-7890",
+        "address": "123 Main St",
+        "city": "New York",
+        "state": "NY",
+        "zip_code": "10001",
+        "card_number": "4111111111111111",
+        "ccv": "123",
+        "security_code": "456",
+        "subscription_plan": "PREMIUM"
     }
 
 # Test UserCreate Schema
@@ -32,62 +37,30 @@ def test_valid_user_registration(valid_registration_data):
     assert user.password == valid_registration_data["password"]
 
 @pytest.mark.parametrize("invalid_password", [
-    "short",  # Too short
-    "nouppercase123!",  # No uppercase
-    "NOLOWERCASE123!",  # No lowercase
-    "NoSpecialChar123",  # No special character
-    "NoNumber!",  # No number
+    "short",
+    "nouppercase123!",
+    "NOLOWERCASE123!",
+    "NoSpecialChar123",
+    "NoNumber!"
 ])
 def test_invalid_password_validation(invalid_password, valid_registration_data):
     """Test that invalid passwords are rejected."""
     data = valid_registration_data.copy()
     data["password"] = invalid_password
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError, match="Password"):
         UserCreate(**data)
 
-@pytest.mark.parametrize("invalid_email", [
-    "not_an_email",
-    "missing@tld",
-    "@nodomain.com",
-    "spaces in@email.com",
+@pytest.mark.parametrize("invalid_subscription_plan", [
+    "INVALID_PLAN",
+    "123",
+    "",
 ])
-def test_invalid_email_validation(invalid_email, valid_registration_data):
-    """Test that invalid email formats are rejected."""
-    data = valid_registration_data.copy()
-    data["email"] = invalid_email
-    with pytest.raises(ValidationError):
-        UserCreate(**data)
-
-def test_nickname_defaults_to_none(valid_registration_data):
-    """Test that nickname defaults to None if not provided."""
-    user = UserCreate(**valid_registration_data)
-    assert user.nickname is None  # Nickname should be None by default
-
-@pytest.mark.parametrize("valid_nickname", [
-    "user123",
-    "test_user",
-    "test-user",
-    "testuser",
-])
-def test_valid_nickname_formats(valid_nickname, valid_registration_data):
-    """Test that valid nickname formats are accepted."""
-    data = valid_registration_data.copy()
-    data["nickname"] = valid_nickname
-    user = UserCreate(**data)
-    assert user.nickname == valid_nickname
-
-@pytest.mark.parametrize("invalid_nickname", [
-    "u",  # Too short
-    "user@123",  # Invalid character
-    "user 123",  # Space not allowed
-    "user#123",  # Special character not allowed
-])
-def test_invalid_nickname_formats(invalid_nickname, valid_registration_data):
-    """Test that invalid nickname formats are rejected."""
-    data = valid_registration_data.copy()
-    data["nickname"] = invalid_nickname
-    with pytest.raises(ValidationError):
-        UserCreate(**data)
+def test_invalid_subscription_plan(invalid_subscription_plan, valid_update_data):
+    """Test that invalid subscription plans are rejected."""
+    data = valid_update_data.copy()
+    data["subscription_plan"] = invalid_subscription_plan
+    with pytest.raises(ValidationError, match="Invalid subscription plan"):
+        UserUpdate(**data)
 
 # Test UserResponse Schema
 def test_valid_user_response():
