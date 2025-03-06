@@ -28,7 +28,7 @@ app = FastAPI(title="TheoForge API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow frontend origin
-    allow_credentials=True,  # Required for cookies/auth headers
+    allow_credentials=True,  # Required for auth headers
     allow_methods=["*"],
     allow_headers=["*"],
 )

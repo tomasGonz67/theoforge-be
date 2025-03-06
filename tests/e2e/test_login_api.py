@@ -4,7 +4,6 @@ Integration tests for the login API endpoints.
 These tests verify that the login API:
 - Validates credentials correctly
 - Returns proper tokens
-- Sets cookies correctly
 - Handles invalid credentials appropriately
 """
 import pytest

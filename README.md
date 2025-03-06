@@ -133,59 +133,85 @@ If you encounter issues:
    curl http://localhost:8000/health
    ```
 
+## Authentication
+
+This API uses JWT token-based authentication:
+
+1. **Registration**: Create a new user account using `/auth/register`
+2. **Login**: Obtain a JWT token by submitting credentials to `/auth/login`
+3. **Using Protected Routes**: Include the JWT token in the `Authorization` header as a Bearer token:
+   ```
+   Authorization: Bearer <your_jwt_token>
+   ```
+
+JWT tokens contain claims about the user, including:
+- `sub`: The user's email
+- `role`: The user's role (USER or ADMIN)
+- `exp`: Token expiration timestamp
+
 ## API Endpoints
 
-- `GET /`: Returns "Hello World"
-- `GET /health`: Health check endpoint that also verifies database connectivity
+### Authentication Endpoints
 - `POST /auth/register`: Register a new user
+- `POST /auth/login`: Login and obtain a JWT token
+- `GET /auth/auth`: Test authentication (protected route)
+- `POST /auth/logout`: Logout (frontend handles token disposal)
+
+### Guest Endpoints
 - `GET /guests`: Retrieve all guests
 - `POST /guests`: Create a new guest
-- `GET /guests/{guest_id}`: Retrieve a specific guest
-- `PUT /guests/{guest_id}`: Update a guest
-- `DELETE /guests/{guest_id}`: Delete a guest
+- `GET /guests/{guest_id}`: Retrieve a specific guest by ID
+- `GET /guests/session/{session_id}`: Retrieve guests by session ID
+- `PUT /guests/{guest_id}`: Update a guest by ID
+- `PUT /guests/session/{session_id}`: Update a guest by session ID
+- `DELETE /guests/{guest_id}`: Delete a guest by ID
+- `DELETE /guests/session/{session_id}`: Delete a guest by session ID
+- `POST /guests/{guest_id}/chat`: Update a guest's conversation
+
+### Other Endpoints
+- `GET /`: Returns "Hello World"
+- `GET /health`: Health check endpoint that also verifies database connectivity
 
 ## Project Structure
 
 ```
 .
-
 ├── app/                       # Main application package
 │   ├── core/                  # Core functionality
 │   │   └── security.py        # Password hashing and security utilities
 │   ├── models/                # Database models (SQLAlchemy)
-│   │   ├── user.py            
-│   │   └── guest.py           
+│   │   └── ...                # User, Guest models
 │   ├── operations/            # Business logic operations
-│   │   ├── user.py            
-│   │   └── guest.py           
+│   │   └── ...                # User, Guest, and JWT services
 │   ├── routers/               # API route definitions     
 │   │   ├── auth.py            # Authentication endpoints
-│   │   ├── dependencies.py    # Router dependencies
-│   │   ├── guest.py           # Guest endpoints
-│   │   └── user.py            # User endpoints
+│   │   ├── dependencies.py    # Router dependencies (auth, DB)
+│   │   └── guest.py           # Guest endpoints
 │   ├── schemas/               # Pydantic schemas for validation
-│   │   ├── user.py            
-│   │   └── guest.py           
+│   │   └── ...                # Request/response models
 │   ├── database.py            # Database configuration and session
 │   └── main.py                # FastAPI application entry point
 ├── alembic/                   # Database migrations
-│   ├── versions/              # Migration version files
-│   │   └── 
-│   ├── env.py                 # Alembic environment configuration
-│   └── script.py.mako         # Migration script template
+│   └── ...                    # Migration configuration and versions
 ├── settings/                  # Application settings
 │   └── config.py              # Configuration settings
 ├── tests/                     # Test suite
+│   ├── e2e/                   # End-to-end tests
 │   ├── integration/           # Integration tests
-│   │   └── test_registration.py  
 │   ├── unit/                  # Unit tests
-│   │   └── test_user.py       
 │   └── conftest.py            # Test fixtures and configuration
-├── .gitignore                 # Git ignore file
-├── alembic.ini                # Alembic configuration
 ├── docker-compose.yml         # Docker Compose configuration
 ├── Dockerfile                 # Docker image definition
-├── pytest.ini                 # Pytest configuration
 ├── requirements.txt           # Python dependencies
 └── README.md                  # Project documentation
-``` 
+```
+
+The codebase follows a structured organization:
+
+- **Models**: Define database tables and relationships using SQLAlchemy ORM
+- **Schemas**: Define request/response validation using Pydantic models
+- **Operations**: Business logic and services for each domain entity
+- **Routers**: API endpoints organized by feature
+- **Dependencies**: Shared dependencies for authentication and database access
+
+This structure separates concerns, making the codebase more maintainable and testable. 
