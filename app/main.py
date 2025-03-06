@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
         raise ValueError("DATABASE_URL environment variable is not set")
     yield
 
-app = FastAPI(title="TheoForge API", lifespan=lifespan, openapi_version="3.1.0")
+app = FastAPI(title="TheoForge API", lifespan=lifespan, openapi_version="3.0.2")
 
 app.add_middleware(
     CORSMiddleware,
