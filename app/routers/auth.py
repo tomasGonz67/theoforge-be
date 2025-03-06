@@ -1,13 +1,15 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from datetime import timedelta
 
-from app.schemas.user import UserCreate, UserResponse
+from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.operations.jwt_service import create_access_token
 from app.routers.dependencies import get_current_user, get_db
 from app.operations.user import UserRepository, RegistrationService, AuthenticationService
 from settings.config import settings
+from app.models.user import User, SubscriptionPlan
 
 # Create a router for auth endpoints
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -93,3 +95,77 @@ async def logout():
     The backend doesn't maintain session state, so this endpoint is provided for API completeness.
     '''
     return {"message": "Logged out successfully"}
+
+# Update user profile
+@router.put("/update", response_model=UserResponse)
+async def update_user(
+    user_update: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update user profile details including phone number, address, payment info, and subscription plan.
+
+    - Requires authentication.
+    - Fields that can be updated: phone_number, address, city, state, zip_code, card_number, ccv, security_code, subscription_plan.
+    """
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Update fields if provided
+    if user_update.phone_number is not None:
+        user.phone_number = user_update.phone_number
+    if user_update.address is not None:
+        user.address = user_update.address
+    if user_update.city is not None:
+        user.city = user_update.city
+    if user_update.state is not None:
+        user.state = user_update.state
+    if user_update.zip_code is not None:
+        user.zip_code = user_update.zip_code
+    if user_update.card_number is not None:
+        user.card_number = user_update.card_number
+    if user_update.ccv is not None:
+        user.ccv = user_update.ccv
+    if user_update.security_code is not None:
+        user.security_code = user_update.security_code
+    if user_update.subscription_plan is not None:
+        try:
+            user.subscription_plan = SubscriptionPlan[user_update.subscription_plan.upper()]
+        except KeyError:
+            raise HTTPException(status_code=400, detail="Invalid subscription plan")
+
+    await db.commit()
+    await db.refresh(user)
+
+    return user
+
+
+
+@router.delete("/delete", status_code=status.HTTP_200_OK)
+async def delete_user(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete user account.
+
+    - Requires authentication.
+    - Deletes the authenticated user's account permanently.
+    - Returns a success message.
+    """
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await db.delete(user)  # ✅ Remove user from database
+    await db.commit()  # ✅ Commit changes to persist deletion
+
+    return {"message": "User deleted successfully"}  # ✅ Now returns a JSON response
+
+

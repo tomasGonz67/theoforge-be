@@ -27,8 +27,11 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 # Retrieve current user from access_token in Authorization header
+from app.models.user import User
+from app.operations.user import UserRepository
+
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    """Extract the current user from JWT in Authorization header."""
+    """Extract the current user from JWT in Authorization header and return the full user object."""
     if token is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
@@ -41,16 +44,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         if email is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        from app.operations.user import UserRepository
         user_repo = UserRepository(db)
         user = await user_repo.get_by_email(email)
         
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
-        
-        return user.email  # Return email to maintain compatibility with existing code (for now?)
+
+        return user  # ✅ Now returning the full User object instead of just email
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
 
 def get_settings() -> Settings:
     """Return application settings."""

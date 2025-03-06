@@ -67,8 +67,11 @@ async def test_protected_route_with_valid_token(test_client, valid_user_token, s
     )
     assert response.status_code == 200
     data = response.json()
-    assert "username" in data
-    assert data["username"] == "user@example.com"
+    assert "username" in data  # ✅ Ensures "username" field exists
+    assert "email" in data["username"]  # ✅ Access email correctly
+    assert data["username"]["email"] == "user@example.com"
+    assert "nickname" in data["username"]
+    assert data["username"]["nickname"] == "test_user"
 
 @pytest.mark.asyncio
 async def test_protected_route_without_token(test_client):
@@ -97,7 +100,10 @@ async def test_admin_route_with_admin_token(test_client, valid_admin_token, setu
     assert response.status_code == 200
     data = response.json()
     assert "username" in data
-    assert data["username"] == "admin@example.com"
+    assert "email" in data["username"]
+    assert data["username"]["email"] == "admin@example.com"
+    assert "nickname" in data["username"]
+    assert data["username"]["nickname"] == "admin_user"
 
 @pytest.mark.asyncio
 async def test_admin_route_with_user_token(test_client, valid_user_token, setup_users):
@@ -109,7 +115,10 @@ async def test_admin_route_with_user_token(test_client, valid_user_token, setup_
     assert response.status_code == 200
     data = response.json()
     assert "username" in data
-    assert data["username"] == "user@example.com"
+    assert "email" in data["username"]
+    assert data["username"]["email"] == "user@example.com"
+    assert "nickname" in data["username"]
+    assert data["username"]["nickname"] == "test_user"
 
 @pytest.mark.asyncio
 async def test_public_route_with_token(test_client, valid_user_token):
