@@ -1,10 +1,12 @@
 from builtins import Exception
-from fastapi import HTTPException, Depends, status
+from fastapi import HTTPException, Depends, status, Security
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from jose import JWTError
 from app.database import Database
+from jose import JWTError
+from jwt import PyJWTError, ExpiredSignatureError
 from app.operations.jwt_service import decode_token
 from settings.config import Settings
 
@@ -34,7 +36,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     """Extract the current user from JWT in Authorization header and return the full user object."""
     if token is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
-
+    
     try:
         payload = decode_token(token)
         if payload is None:

@@ -122,8 +122,15 @@ class AuthenticationService:
         if user:
             if user.email_verified is False:
                 return None
+            if user.is_locked:
+                return None
             if verify_password(password, user.hashed_password):
-                return await self.repository.save(user)
+                user.failed_login_attempts = 0
+                return user
+            else:
+                user.failed_login_attempts += 1
+                if user.failed_login_attempts >= settings.max_login_attempts:
+                    user.is_locked = True
         return None
 
 # Profile Update service
@@ -148,23 +155,3 @@ class ProfileUpdateService:
             setattr(user, key, value)
         
         return await self.repository.save(user)
-
-# Token-based user retrieval service
-def get_current_user(access_token: str) -> Optional[User]:
-    """Retrieve current user based on access token."""
-    try:
-        payload = decode_token(access_token)
-        if not payload:
-            return None
-        
-        email: str = payload.get("sub")
-        if not email:
-            return None
-        
-        db = Database.get_session_factory()()
-        user_repo = UserRepository(db)
-        user = user_repo.get_by_email(email)
-        return user
-    except Exception as e:
-        logger.error(f"Error decoding token: {str(e)}")
-        return None
