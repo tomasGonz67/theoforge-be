@@ -100,10 +100,13 @@ async def test_admin_route_with_admin_token(test_client, valid_admin_token, setu
 async def test_admin_route_with_user_token(test_client, valid_user_token, setup_users):
     """Test accessing an admin route with a regular user token."""
     response = await test_client.get(
-        "/auth/auth",
+        "/auth/auth", 
         headers={"Authorization": f"Bearer {valid_user_token}"}
     )
-    assert response.status_code == 200, f"Unexpected response: {response.json()}"
+    assert response.status_code == 200
+    data = response.json()
+    assert "username" in data
+    assert data["username"] == "user@example.com"
 
 @pytest.mark.asyncio
 async def test_public_route_with_token(test_client, valid_user_token):

@@ -1,11 +1,15 @@
 from builtins import Exception
-from fastapi import HTTPException, Cookie, Depends, status
+from fastapi import HTTPException, Depends, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from jose import JWTError
 from app.database import Database
 from app.operations.jwt_service import decode_token
 from settings.config import Settings
+
+# Create OAuth2PasswordBearer for token extraction from Authorization header
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 async def get_db() -> AsyncSession:
     """Dependency that provides a database session for each request."""
@@ -22,14 +26,14 @@ async def get_db() -> AsyncSession:
         finally:
             await session.close()
 
-# Retrieve current user from access_token
-async def get_current_user(access_token: str = Cookie(None), db: AsyncSession = Depends(get_db)):
-    """Extract the current user from JWT stored in a cookie."""
-    if access_token is None:
+# Retrieve current user from access_token in Authorization header
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+    """Extract the current user from JWT in Authorization header."""
+    if token is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
-        payload = decode_token(access_token)
+        payload = decode_token(token)
         if payload is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
@@ -44,7 +48,7 @@ async def get_current_user(access_token: str = Cookie(None), db: AsyncSession = 
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
         
-        return user
+        return user.email  # Return email to maintain compatibility with existing code (for now?)
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 

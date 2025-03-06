@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Response, Cookie
+from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
@@ -37,19 +37,21 @@ async def register(
             detail=str(e)
         ) 
 
-# Creating a JSON Response (to then set a HTTP-only cookie after immediate use by frontend)
+# Login endpoint that returns JWT token
 @router.post("/login")
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(), 
     auth_service = Depends(get_auth_service)
 ):
     '''
-    Login to create JSON response for immediate use by frontend and to set cookie afterward
-
-        - username: user@example.com
-        - password: SecurePass123!
+    Login to get an access token for authenticated API requests
+    
+    - username: user@example.com
+    - password: SecurePass123!
+    
+    Returns a JWT token that should be included in the Authorization header
+    for subsequent requests as: "Bearer {token}"
     '''
-
     user = await auth_service.login_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=400, detail="Invalid username/password")
@@ -63,19 +65,24 @@ async def login(
 
     return {"access_token": access_token, "token_type": "bearer"}
 
-# When protecting certain routes using JWT authentication with the cookie
+# Protected route that requires authentication
 @router.get("/auth")
 async def auth_route(username: str = Depends(get_current_user)):
     '''
-    Authenticates user based on cookie
-
-        - Uses encoded JWT in cookie for protected path check
-        - Validates token through get_current_user dependency
-    '''
+    Authenticates user based on JWT token in Authorization header
     
+    - Requires a valid JWT token in the Authorization header as "Bearer {token}"
+    - Returns user information if authentication is successful
+    '''
     return {"message": "You have access!", "username": username}
 
-# Clears cookie when logging out
+# Simple logout endpoint (note: actual token invalidation would be handled by the frontend)
 @router.post("/logout")
-async def logout(response: Response):
+async def logout():
+    '''
+    Logout endpoint
+    
+    Note: Since we're using JWT tokens, actual token management is handled by the frontend.
+    The backend doesn't maintain session state, so this endpoint is provided for API completeness.
+    '''
     return {"message": "Logged out successfully"}
