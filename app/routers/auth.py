@@ -5,10 +5,9 @@ from datetime import timedelta
 from uuid import UUID
 from typing import List
 
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
-from app.schemas.token_schema import TokenResponse
+from app.schemas.user import UserCreate, UserResponse
 from app.operations.jwt_service import create_access_token
-from app.routers.dependencies import get_db, get_registration_service, get_auth_service, get_current_user, get_user_repository
+from app.routers.dependencies import get_registration_service, get_auth_service, get_current_user
 from settings.config import settings
 from app.models.user import User
 from app.operations.user import UserRepository, ProfileUpdateService
@@ -74,6 +73,17 @@ async def register(
             detail=str(e)
         ) 
 
+# Simulated user database for FastAPI example
+# DELETE THIS
+# TODO: Use database for user login
+users_db = {
+    "user@example.com": {
+        "username": "user@example.com",
+        "password": "Secure*1234",
+    }
+}
+
+# Creating a JSON Response (to then set a HTTP-only cookie after immediate use by frontend)
 @router.post("/login")
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(), 
@@ -94,60 +104,19 @@ async def login(
 
     return {"access_token": access_token, "token_type": "bearer"}
 
-# --- User CRUD Routes ---
-@router.get("/users", response_model=List[UserResponse])
-async def list_users(user_repo: UserRepository = Depends(get_user_repository)):
-    """
-    List all users.
-    """
-    users = await user_repo.get_all_users()
-    return users
+# When protecting certain routes using JWT authentication with the cookie
+@router.get("/auth")
+async def auth_route(username: str = Depends(get_current_user)):
+    '''
+    Authenticates user based on cookie
 
-@router.put("/users/{user_id}", response_model=UserResponse)
-async def update_user(
-    user_id: UUID,
-    updated_data: UserCreate,
-    user_repo: UserRepository = Depends(get_user_repository)
-):
-    """
-    Update user details.
-    """
-    user = await user_repo.get_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        - Uses encoded JWT in cookie for protected path check
+        - Validates token through get_current_user dependency
+    '''
     
-    for key, value in updated_data.dict(exclude_unset=True).items():
-        setattr(user, key, value)
-    
-    updated_user = await user_repo.save(user)
-    return updated_user
+    return {"message": "You have access!", "username": username}
 
-@router.put("/profile")
-async def update_profile(
-    user_data: UserUpdate, 
-    db: AsyncSession = Depends(get_db), 
-    current_user: User = Depends(get_current_user),
-    user_repo: UserRepository = Depends(get_user_repository)
-):
-    """
-    Update user profile with address, phone, and payment info.
-    """
-    profile_service = ProfileUpdateService(user_repo)
-    updated_user = await profile_service.update_profile(current_user.id, user_data.dict(exclude_unset=True))
-
-    if not updated_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return {"message": "Profile updated successfully"}
-
-@router.delete("/users/{user_id}")
-async def delete_user(user_id: UUID, user_repo: UserRepository = Depends(get_user_repository)):
-    """
-    Delete a user.
-    """
-    user = await user_repo.get_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    await user_repo.delete(user)
-    return {"message": "User deleted successfully"}
+# Clears cookie when logging out
+@router.post("/logout")
+async def logout(response: Response):
+    return {"message": "Logged out successfully"}
