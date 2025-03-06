@@ -52,15 +52,13 @@ def expired_token():
 
 @pytest.mark.asyncio
 async def test_protected_route_with_valid_token(test_client, valid_user_token):
-    """Test accessing a protected route with a valid token."""
-    # Use the existing protected auth route
+    """Test accessing a protected route with a valid token using Authorization header."""
+    
     response = await test_client.get(
         "/auth/auth",
-        cookies={"access_token": valid_user_token}
+        headers={"Authorization": f"Bearer {valid_user_token}"}
     )
-    
-    # The exact status code depends on whether the user exists in the database
-    # But it should not be 401 Unauthorized or 403 Forbidden
+
     assert response.status_code not in (401, 403)
 
 
@@ -76,13 +74,12 @@ async def test_protected_route_without_token(test_client):
 @pytest.mark.asyncio
 async def test_protected_route_with_expired_token(test_client, expired_token):
     """Test accessing a protected route with an expired token."""
-    response = await test_client.get(
-        "/auth/auth",
-        cookies={"access_token": expired_token}
-    )
-    
+    headers = {"Authorization": f"Bearer {expired_token}"}
+
+    response = await test_client.get("/auth/auth", headers=headers)
+
     assert response.status_code == 401
-    assert "Invalid token" in response.text
+    assert response.json() == {"detail": "Invalid token"}
 
 
 @pytest.mark.asyncio
@@ -92,7 +89,7 @@ async def test_admin_route_with_admin_token(test_client, valid_admin_token):
     # by checking the response from a protected route
     response = await test_client.get(
         "/auth/auth",
-        cookies={"access_token": valid_admin_token}
+        headers={"Authorization": f"Bearer {valid_admin_token}"}
     )
     
     # Should be successful with the admin token
@@ -111,7 +108,7 @@ async def test_admin_route_with_user_token(test_client, valid_user_token):
     # that a user token can still access protected routes
     response = await test_client.get(
         "/auth/auth",
-        cookies={"access_token": valid_user_token}
+        headers={"Authorization": f"Bearer {valid_user_token}"}
     )
     
     # Should be successful with a user token

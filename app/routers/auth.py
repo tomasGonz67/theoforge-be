@@ -63,13 +63,13 @@ async def login(
 
     return {"access_token": access_token, "token_type": "bearer"}
 
-# When protecting certain routes using JWT authentication with the cookie
+# When protecting certain routes using JWT authentication
 @router.get("/auth")
 async def auth_route(username: str = Depends(get_current_user)):
     '''
     Authenticates user based on cookie
 
-        - Uses encoded JWT in cookie for protected path check
+        - Uses encoded JWT for protected path check
         - Validates token through get_current_user dependency
     '''
     

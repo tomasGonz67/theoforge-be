@@ -10,6 +10,7 @@ import pytest
 from datetime import timedelta
 from fastapi import HTTPException
 import jwt
+from jwt import PyJWTError, ExpiredSignatureError
 from unittest.mock import patch, MagicMock
 
 from app.routers.dependencies import get_current_user
@@ -54,7 +55,7 @@ def test_get_current_user_invalid_token():
     invalid_token = "invalid.token.string"
     
     # Act & Assert
-    with patch('app.routers.dependencies.decode_token', return_value=None):
+    with patch('app.routers.dependencies.decode_token', return_value={}):
         with pytest.raises(HTTPException) as excinfo:
             try:
                 get_current_user(invalid_token)
@@ -88,12 +89,12 @@ def test_get_current_user_jwt_error():
     """Test retrieving current user when a JWT error occurs."""
     # Arrange
     token = "some.valid.looking.token"
-    jwt_error = jwt.PyJWTError("Token invalid")
-    
+
     # Act & Assert
     with patch('app.routers.dependencies.decode_token') as mock_decode:
         # Mock the decode_token function to raise a JWT error
-        mock_decode.side_effect = jwt_error
+        mock_decode.side_effect = PyJWTError("Token invalid")
+
         with pytest.raises(HTTPException) as excinfo:
             get_current_user(token)
     
@@ -114,7 +115,9 @@ def test_get_current_user_expired_token():
     # Act & Assert
     # When a token is expired, the implementation should decode it but find it's expired
     # We'll simulate that scenario by returning None from decode_token
-    with patch('app.routers.dependencies.decode_token', return_value=None):
+    with patch('app.routers.dependencies.decode_token') as mock_decode:
+        mock_decode.side_effect = ExpiredSignatureError("Token has expired")
+
         with pytest.raises(HTTPException) as excinfo:
             try:
                 get_current_user(expired_token)

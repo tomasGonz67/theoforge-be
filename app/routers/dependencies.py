@@ -1,8 +1,10 @@
 from builtins import Exception
-from fastapi import HTTPException, Cookie, Depends, status
+from fastapi import HTTPException, Depends, status, Security
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import Database
 from jose import JWTError
+from jwt import PyJWTError, ExpiredSignatureError
 from app.operations.jwt_service import decode_token
 from settings.config import Settings
 from sqlalchemy.exc import SQLAlchemyError
@@ -22,21 +24,24 @@ async def get_db() -> AsyncSession:
         finally:
             await session.close()
 
-# Retrieve current user based on access_token via cookie
-def get_current_user(access_token: str = Cookie(None)):
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# Retrieve current user based on JWT
+def get_current_user(access_token: str = Security(oauth2_scheme)):
     if access_token is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
-
+    
     try:
         payload = decode_token(access_token)
         if payload is None:
             raise HTTPException(status_code=401, detail="Invalid token")
-        
         username: str = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         return username
-    except Exception:
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except (JWTError, PyJWTError):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 def get_settings() -> Settings:

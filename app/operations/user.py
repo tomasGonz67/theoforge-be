@@ -104,7 +104,7 @@ class AuthenticationService:
             if user.email_verified is False:
                 return None
             if verify_password(password, user.hashed_password):
-                return await self.repository.save(user)
+                return user
         return None
 
 # The UserService class has been removed as it's no longer needed.
