@@ -103,8 +103,15 @@ class AuthenticationService:
         if user:
             if user.email_verified is False:
                 return None
+            if user.is_locked:
+                return None
             if verify_password(password, user.hashed_password):
+                user.failed_login_attempts = 0
                 return user
+            else:
+                user.failed_login_attempts += 1
+                if user.failed_login_attempts >= settings.max_login_attempts:
+                    user.is_locked = True
         return None
 
 # The UserService class has been removed as it's no longer needed.

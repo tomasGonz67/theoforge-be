@@ -39,8 +39,10 @@ def get_current_user(access_token: str = Security(oauth2_scheme)):
         if username is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         return username
+    
     except ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
+    
     except (JWTError, PyJWTError):
         raise HTTPException(status_code=401, detail="Invalid token")
 
