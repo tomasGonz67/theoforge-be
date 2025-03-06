@@ -148,23 +148,3 @@ class ProfileUpdateService:
             setattr(user, key, value)
         
         return await self.repository.save(user)
-
-# Token-based user retrieval service
-def get_current_user(access_token: str) -> Optional[User]:
-    """Retrieve current user based on access token."""
-    try:
-        payload = decode_token(access_token)
-        if not payload:
-            return None
-        
-        email: str = payload.get("sub")
-        if not email:
-            return None
-        
-        db = Database.get_session_factory()()
-        user_repo = UserRepository(db)
-        user = user_repo.get_by_email(email)
-        return user
-    except Exception as e:
-        logger.error(f"Error decoding token: {str(e)}")
-        return None
