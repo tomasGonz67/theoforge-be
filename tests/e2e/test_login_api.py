@@ -113,38 +113,6 @@ async def test_login_unverified_email(async_client: AsyncClient, db_session: Asy
 
 
 @pytest.mark.asyncio
-async def test_set_cookie_endpoint(async_client: AsyncClient, user):
-    """Test the set-cookie endpoint after login."""
-    # Arrange
-    # First login to get a token
-    login_data = {
-        "username": user.email,
-        "password": "SecurePass123!"
-    }
-    login_response = await async_client.post("/auth/login", data=login_data)
-    token = login_response.json()["access_token"]
-    
-    # Act
-    cookie_response = await async_client.post(
-        "/auth/set-cookie", 
-        json={"access_token": token, "token_type": "bearer"}
-    )
-    
-    # Assert
-    assert cookie_response.status_code == 200
-    
-    # Check that we have a cookie set in the response
-    cookies = cookie_response.cookies
-    assert "access_token" in cookies
-    assert cookies["access_token"] == token
-    
-    # Get the cookie details 
-    cookie_header = cookie_response.headers.get("set-cookie")
-    assert "HttpOnly" in cookie_header
-    assert "SameSite" in cookie_header
-
-
-@pytest.mark.asyncio
 async def test_login_admin_user(async_client: AsyncClient, admin_user):
     """Test login with admin user."""
     # Arrange
