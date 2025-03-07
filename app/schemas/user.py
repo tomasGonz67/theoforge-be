@@ -60,6 +60,32 @@ class UserUpdate(BaseModel):
             return v.upper()
         return v
 
+class UserGeneralUpdate(BaseModel):
+    """Schema for updating general user information."""
+    first_name: Optional[str] = Field("Johnny", description="User's first name")  
+    last_name: Optional[str] = Field("Appleseed", description="User's last name")  
+    email: Optional[EmailStr] = Field("johnny.appleseed@example.com", description="User's email address") 
+    nickname: Optional[str] = Field("johnny_apple", description="User's nickname")  
+    password: Optional[str] = Field("Appleseed123!", description="User's password")  
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: Optional[str]) -> Optional[str]:
+        """Validate password meets security requirements."""
+        if v is not None:
+            if len(v) < 8:
+                raise ValueError("Password must be at least 8 characters long")
+            if not any(c.isupper() for c in v):
+                raise ValueError("Password must contain at least one uppercase letter")
+            if not any(c.islower() for c in v):
+                raise ValueError("Password must contain at least one lowercase letter")
+            if not any(c.isdigit() for c in v):
+                raise ValueError("Password must contain at least one number")
+            if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in v):
+                raise ValueError("Password must contain at least one special character")
+        return v
+
+
 class UserResponse(UserBase):
     """Schema for user response after registration."""
     id: UUID
@@ -71,3 +97,5 @@ class ErrorResponse(BaseModel):
     """Schema for API error responses."""
     error: str = Field(..., description="Error type")
     details: Optional[str] = Field(None, description="Detailed error message")
+
+    
