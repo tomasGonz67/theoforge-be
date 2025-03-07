@@ -1,3 +1,4 @@
+
 """
 Test configuration and fixtures for the TheoForge Backend.
 
@@ -16,6 +17,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.pool import NullPool
 from faker import Faker
 from unittest.mock import AsyncMock
+from alembic import command
+from alembic.config import Config
 
 from app.main import app
 from app.database import Base, Database, DbService
@@ -29,11 +32,11 @@ from app.models.guest import Guest, GuestStatus  # ✅ Fixed Import
 
 fake = Faker()
 
-# same database URL as main app since we're running in Docker
+# Same database URL as main app since we're running in Docker
 database_url = os.getenv("DATABASE_URL", "postgresql://user:password@postgres:5432/theoforge_dev")
 TEST_DATABASE_URL = database_url.replace("postgresql://", "postgresql+asyncpg://")
 
-# Create engine with NullPool to prevent connection reuse
+# Create async engine with NullPool to prevent connection reuse
 engine = create_async_engine(
     TEST_DATABASE_URL,
     poolclass=NullPool,
@@ -51,12 +54,31 @@ async_session_maker = async_sessionmaker(
 
 @pytest.fixture(scope="session", autouse=True)
 async def initialize_database():
-    """Initialize the database for testing."""
+    """Initialize the database for testing using Alembic migrations."""
     Database.initialize(database_url)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")  # ✅ Apply migrations properly
     yield engine
     await engine.dispose()
+
+@pytest.fixture(scope="function", autouse=True)
+async def setup_database():
+    """Ensure test data is cleared without deleting alembic_version."""
+    async with engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            if table.name != "alembic_version":  # ✅ Skip alembic_version table
+                await conn.execute(table.delete())  # ✅ Delete only test data, not schema
+
+    yield  # Run the test
+
+@pytest.fixture(scope="function")
+async def db_session():
+    """Provide a database session for each test."""
+    async with async_session_maker() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
 @pytest.fixture(scope="function")
 async def async_client(db_session):
@@ -67,24 +89,6 @@ async def async_client(db_session):
             yield client
         finally:
             app.dependency_overrides.clear()
-
-@pytest.fixture(scope="function", autouse=True)
-async def setup_database():
-    """Set up a clean database for each test."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
-@pytest.fixture(scope="function")
-async def db_session(setup_database):
-    """Provide a database session for each test."""
-    async with async_session_maker() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
 
 @pytest.fixture(scope="function")
 async def user(db_session):
@@ -188,7 +192,6 @@ async def users_with_same_role_50_users(db_session):
     await db_session.commit()
     return users
 
-# Configure a fixture for each type of user role you want to test
 @pytest.fixture(scope="function")
 def admin_token(admin_user):
     token_data = {"sub": str(admin_user.id), "role": admin_user.role.name}
@@ -199,31 +202,26 @@ def user_token(user):
     token_data = {"sub": str(user.id), "role": user.role.name}
     return create_access_token(data=token_data, expires_delta=timedelta(minutes=30))
 
-# Add fixtures for our new services
 @pytest.fixture(scope="function")
 def user_repository(db_session):
     """Provide a UserRepository instance for testing."""
-    from app.operations.user import UserRepository
     return UserRepository(db_session)
 
 @pytest.fixture(scope="function")
 def authentication_service(db_session):
     """Provide an AuthenticationService instance for testing."""
-    from app.operations.user import AuthenticationService, UserRepository
     repository = UserRepository(db_session)
     return AuthenticationService(repository)
 
 @pytest.fixture(scope="function")
 def registration_service(db_session):
     """Provide a RegistrationService instance for testing."""
-    from app.operations.user import RegistrationService, UserRepository
     repository = UserRepository(db_session)
     return RegistrationService(repository)
 
 @pytest.fixture(scope="function")
 def db_service():
     """Provide a DbService instance for testing."""
-    from app.database import DbService
     return DbService
 
 @pytest.fixture(scope="function")
@@ -240,10 +238,9 @@ async def test_guest(db_session: AsyncSession):
     guest = Guest(**guest_data)
     db_session.add(guest)
     
-    await db_session.commit()  # ✅ Ensure it's written to the database
-    await db_session.refresh(guest)  # ✅ Ensure it's retrievable
-
-    # 🔥 **Verify guest actually exists** before returning it
+    await db_session.commit()
+    await db_session.refresh(guest)
+    
     stored_guest = await db_session.get(Guest, guest.id)
     assert stored_guest is not None, "Guest was not found in the database after commit!"
 
