@@ -6,8 +6,9 @@ from sqlalchemy import (
     Column, String, Integer, DateTime, Boolean, func, Enum as SQLAlchemyEnum
 )
 from sqlalchemy.dialects.postgresql import UUID, ENUM
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+from app.models.resource import Resource
 
 class UserRole(Enum):
     """Enumeration of user roles within the application, stored as ENUM in the database."""
@@ -59,7 +60,7 @@ class User(Base):
     # Subscription Plan
     subscription_plan: Mapped[SubscriptionPlan] = Column(SQLAlchemyEnum(SubscriptionPlan, name='SubscriptionPlan', create_constraint=True), nullable=False, default=SubscriptionPlan.FREE)
 
-
+    resources = relationship("Resource", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         """Provides a readable representation of a user object."""

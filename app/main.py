@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import Base, Database, DbService
-from app.routers import auth, guest
+from app.routers import auth, guest, resource
 
 # Get database URL from environment variable
 database_url = os.getenv("DATABASE_URL")
@@ -36,6 +36,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(guest.router)
+app.include_router(resource.router)
 
 @app.get("/")
 async def root():
