@@ -1,11 +1,11 @@
-import uuid
 from sqlalchemy import Column, String, ForeignKey, Boolean, TIMESTAMP, Table
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
+import uuid
 from app.database import Base
 
-# Association table for many-to-many relationship (Self-referential relationships)
+# Association table for many-to-many related resources
 resource_association_table = Table(
     "resource_association",
     Base.metadata,
@@ -20,27 +20,26 @@ class Resource(Base):
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     category = Column(String, nullable=False)
-    tags = Column(JSONB, nullable=True)  # Store tags as a JSON list
-    profile_picture = Column(String, nullable=True)  # Profile image for the resource
-    source_url = Column(String, nullable=True)  # External link to the resource
+    tags = Column(JSONB, nullable=True)  # JSON column
+    profile_picture = Column(String, nullable=True)
+    source_url = Column(String, nullable=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     is_public = Column(Boolean, default=True, nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
 
-    # ✅ Fix timestamps for correct PostgreSQL behavior
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(TIMESTAMP(timezone=True), onupdate=func.now(), nullable=False)
+    # ✅ Corrected User Relationship (One-to-Many)
+    user = relationship("User", back_populates="resources", lazy="joined")
 
-    # ✅ Define relationships
-    user = relationship("User", back_populates="resources")
-
-    # ✅ Improved Many-to-Many relationship (Self-referential)
+    # ✅ Fixed Many-to-Many Relationship for related resources
     related_resources = relationship(
         "Resource",
         secondary=resource_association_table,
         primaryjoin=id == resource_association_table.c.resource_id,
         secondaryjoin=id == resource_association_table.c.related_resource_id,
-        cascade="all, delete"
+        backref=backref("related_to", lazy="selectin"),  # ✅ Fixes async issue
+        lazy="selectin",  # ✅ Fixes MissingGreenlet issue
     )
 
     def __repr__(self):
-        return f"<Resource(id={self.id}, name={self.name}, category={self.category}, user_id={self.user_id})>"
+        return f"<Resource(id={self.id}, name={self.name}, user_id={self.user_id})>"

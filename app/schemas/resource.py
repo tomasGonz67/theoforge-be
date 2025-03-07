@@ -1,43 +1,39 @@
-import uuid
 from pydantic import BaseModel
-from typing import Optional, List, Dict
-from datetime import datetime
+from typing import List, Optional
+import uuid
+
 
 class ResourceBase(BaseModel):
-    """Base schema for a resource."""
-    name: str = "Sample Resource"
-    description: Optional[str] = "This is a sample description of the resource."
-    category: str = "Technology"
-    tags: Optional[Dict[str, str]] = {"topic": "AI", "level": "Beginner"}  # Example tags
-    profile_picture: Optional[str] = "https://example.com/sample-profile.jpg"  # Example URL
-    source_url: Optional[str] = "https://example.com/resource-info"  # Example URL
-    is_public: bool = True
+    name: str
+    description: Optional[str] = None
+    category: str
+    tags: Optional[list] = None
+    profile_picture: Optional[str] = None
+    source_url: Optional[str] = None
+    user_id: uuid.UUID
+    is_public: bool
 
-class ResourceCreate(ResourceBase):
-    """Schema for creating a new resource."""
+
+class ResourceCreateSchema(ResourceBase):
+    """Schema for creating a new resource"""
     pass
 
-class ResourceUpdate(BaseModel):
-    """Schema for updating a resource (all fields optional)."""
-    name: Optional[str] = "Updated Resource"
-    description: Optional[str] = "Updated description."
-    category: Optional[str] = "Data Science"
-    tags: Optional[Dict[str, str]] = {"topic": "Machine Learning", "difficulty": "Intermediate"}
-    profile_picture: Optional[str] = "https://example.com/updated-profile.jpg"
-    source_url: Optional[str] = "https://example.com/updated-resource"
+
+class ResourceUpdateSchema(BaseModel):
+    """Schema for updating a resource"""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    tags: Optional[list] = None
+    profile_picture: Optional[str] = None
+    source_url: Optional[str] = None
     is_public: Optional[bool] = None
 
-class ResourceOut(ResourceBase):
-    """Schema for returning resource data."""
-    id: uuid.UUID = uuid.uuid4()
-    user_id: uuid.UUID = uuid.uuid4()
-    created_at: datetime = datetime.utcnow()
-    updated_at: datetime = datetime.utcnow()
-    related_resources: List[uuid.UUID] = [uuid.uuid4(), uuid.uuid4()]  # Example related resources
+
+class ResourceSchema(ResourceBase):
+    """Schema for returning a resource with related resources"""
+    id: uuid.UUID
+    related_resources: List["ResourceSchema"] = []
 
     class Config:
-        from_attributes = True  # Ensures compatibility with SQLAlchemy models
-
-class ResourceLink(BaseModel):
-    """Schema for linking two resources."""
-    related_resource_id: uuid.UUID = uuid.uuid4()
+        orm_mode = True

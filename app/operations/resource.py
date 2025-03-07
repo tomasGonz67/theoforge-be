@@ -50,56 +50,83 @@ async def get_all_resources(db: AsyncSession, category: str = None, is_public: b
     result = await db.execute(stmt)
     return result.scalars().all()
 
-async def update_resource(db: AsyncSession, resource_id: uuid.UUID, resource_update: ResourceUpdate, user_id: uuid.UUID):
+async def update_resource(
+    db: AsyncSession, resource_id: uuid.UUID, resource_update: ResourceUpdate, user: User
+):
     """Update a resource if the user is the owner."""
-    result = await db.execute(select(Resource).filter(Resource.id == resource_id))
-    db_resource = result.scalars().first()
+    try:
+        result = await db.execute(select(Resource).filter(Resource.id == resource_id))
+        db_resource = result.scalars().first()
 
-    if not db_resource:
-        raise HTTPException(status_code=404, detail="Resource not found")
-    
-    if db_resource.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to update this resource")
+        if not db_resource:
+            raise HTTPException(status_code=404, detail="Resource not found")
 
-    for key, value in resource_update.dict(exclude_unset=True).items():
-        setattr(db_resource, key, value)
+        if db_resource.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to update this resource")
 
-    await db.commit()
-    await db.refresh(db_resource)
-    return db_resource
+        # Update only the fields that were provided
+        update_data = resource_update.dict(exclude_unset=True)
 
-async def delete_resource(db: AsyncSession, resource_id: uuid.UUID, user_id: uuid.UUID):
+        for key, value in update_data.items():
+            setattr(db_resource, key, value)
+
+        db.add(db_resource)
+        await db.commit()
+        await db.refresh(db_resource)
+
+        return db_resource
+
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+async def delete_resource(db: AsyncSession, resource_id: uuid.UUID, user):
     """Delete a resource if the user is the owner."""
-    result = await db.execute(select(Resource).filter(Resource.id == resource_id))
-    db_resource = result.scalars().first()
+    try:
+        result = await db.execute(select(Resource).filter(Resource.id == resource_id))
+        db_resource = result.scalars().first()
 
-    if not db_resource:
-        raise HTTPException(status_code=404, detail="Resource not found")
+        if not db_resource:
+            raise HTTPException(status_code=404, detail="Resource not found")
 
-    if db_resource.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this resource")
+        if db_resource.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this resource")
 
-    await db.delete(db_resource)
-    await db.commit()
-    return {"message": "Resource deleted successfully"}
+        await db.delete(db_resource)  # ✅ Use `await` to delete asynchronously
+        await db.commit()  # ✅ Use `await` to commit changes
 
-async def link_related_resources(db: AsyncSession, resource_id: uuid.UUID, related_resource_id: uuid.UUID, user_id: uuid.UUID):
+        return {"message": "Resource deleted successfully"}
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+async def link_related_resources(db: AsyncSession, resource_id: uuid.UUID, related_resource_id: uuid.UUID, user):
     """Link two resources as related, if the user owns the primary resource."""
-    result1 = await db.execute(select(Resource).filter(Resource.id == resource_id))
-    primary_resource = result1.scalars().first()
-    
-    result2 = await db.execute(select(Resource).filter(Resource.id == related_resource_id))
-    related_resource = result2.scalars().first()
+    try:
+        # Fetch resources asynchronously
+        result = await db.execute(select(Resource).filter(Resource.id == resource_id))
+        primary_resource = result.scalars().first()
 
-    if not primary_resource or not related_resource:
-        raise HTTPException(status_code=404, detail="One or both resources not found")
+        result = await db.execute(select(Resource).filter(Resource.id == related_resource_id))
+        related_resource = result.scalars().first()
 
-    if primary_resource.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to link resources")
+        if not primary_resource or not related_resource:
+            raise HTTPException(status_code=404, detail="One or both resources not found")
 
-    primary_resource.related_resources.append(related_resource)
-    await db.commit()
-    return {"message": "Resources linked successfully"}
+        if primary_resource.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to link resources")
+
+        # ✅ Link resources correctly
+        primary_resource.related_resources.append(related_resource)
+        await db.commit()
+
+        return {"message": "Resources linked successfully"}
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 async def search_resources(db: AsyncSession, query: str):
     """Search for resources by name or description."""

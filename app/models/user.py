@@ -8,7 +8,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID, ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
-from app.models.resource import Resource
 
 class UserRole(Enum):
     """Enumeration of user roles within the application, stored as ENUM in the database."""
