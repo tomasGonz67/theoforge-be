@@ -97,3 +97,5 @@ class ErrorResponse(BaseModel):
     """Schema for API error responses."""
     error: str = Field(..., description="Error type")
     details: Optional[str] = Field(None, description="Detailed error message")
+
+    

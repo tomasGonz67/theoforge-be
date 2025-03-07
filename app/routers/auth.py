@@ -249,3 +249,6 @@ async def delete_user(
     await db.commit()  # ✅ Commit changes to persist deletion
 
     return {"message": "User deleted successfully"}  # ✅ Now returns a JSON response
+
+
+    
