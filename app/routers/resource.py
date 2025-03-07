@@ -9,6 +9,8 @@ from app.database import get_db
 from app.routers.dependencies import get_current_user
 import uuid
 from typing import List
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.user import User
 
 router = APIRouter(
     prefix="/resources",
@@ -16,9 +18,14 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=ResourceOut)
-def create_new_resource(resource: ResourceCreate, db: Session = Depends(get_db), user_id: uuid.UUID = Depends(get_current_user)):
+async def create_new_resource(
+    resource: ResourceCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)  # ✅ Get the full `User` object
+):
     """Create a new resource (only for registered users)."""
-    return create_resource(db=db, resource=resource, user_id=user_id)
+    return await create_resource(db=db, resource=resource, user=user)  # ✅ Pass full `User` object
+
 
 @router.get("/{resource_id}", response_model=ResourceOut)
 def read_resource(resource_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -26,11 +33,9 @@ def read_resource(resource_id: uuid.UUID, db: Session = Depends(get_db)):
     return get_resource(db=db, resource_id=resource_id)
 
 @router.get("/", response_model=List[ResourceOut])
-def read_all_resources(
-    category: str = None, is_public: bool = None, db: Session = Depends(get_db)
-):
-    """Retrieve all resources with optional filtering by category or public/private."""
-    return get_all_resources(db=db, category=category, is_public=is_public)
+async def read_all_resources(category: str = None, is_public: bool = None, db: AsyncSession = Depends(get_db)):
+    """Retrieve all resources with optional filters."""
+    return await get_all_resources(db=db, category=category, is_public=is_public)
 
 @router.put("/{resource_id}", response_model=ResourceOut)
 def update_existing_resource(
