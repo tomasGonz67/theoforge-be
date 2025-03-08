@@ -5,6 +5,8 @@ from builtins import ValueError, bool
 import logging
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import NullPool
+import os
+from neo4j import GraphDatabase
 
 Base = declarative_base()
 logger = logging.getLogger(__name__)
@@ -124,3 +126,51 @@ async def get_db() -> AsyncSession:
             raise SQLAlchemyError(f"Database error: {str(e)}")
         finally:
             await session.close()
+
+class Neo4jDatabase:
+    """
+    Neo4j database connection handler
+    """
+    _driver = None
+
+    @classmethod
+    def initialize(cls, uri, user, password):
+        """Initialize Neo4j connection"""
+        if cls._driver is None:
+            cls._driver = GraphDatabase.driver(uri, auth=(user, password))
+            # Verify connectivity
+            try:
+                cls._driver.verify_connectivity()
+            except Exception as e:
+                print(f"Neo4j connection error: {e}")
+                cls._driver = None
+                raise
+
+    @classmethod
+    def get_driver(cls):
+        """Get the Neo4j driver instance"""
+        if cls._driver is None:
+            uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+            user = os.getenv("NEO4J_USER", "neo4j")
+            password = os.getenv("NEO4J_PASSWORD", "password")
+            cls.initialize(uri, user, password)
+        return cls._driver
+
+    @classmethod
+    def close(cls):
+        """Close the Neo4j driver connection"""
+        if cls._driver is not None:
+            cls._driver.close()
+            cls._driver = None
+
+class Neo4jService:
+    """
+    Service for Neo4j database operations
+    """
+    @staticmethod
+    def execute_query(query, parameters=None):
+        """Execute a Cypher query and return the result"""
+        driver = Neo4jDatabase.get_driver()
+        with driver.session() as session:
+            result = session.run(query, parameters)
+            return result.data()

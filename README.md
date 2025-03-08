@@ -1,6 +1,6 @@
 # TheoForge Backend
 
-A FastAPI-based backend service with PostgreSQL database and pgAdmin for database management.
+A FastAPI-based backend service with PostgreSQL and Neo4j databases, and pgAdmin for PostgreSQL management.
 
 ### Prerequisites
 - Docker and Docker Compose
@@ -31,11 +31,19 @@ The following services will be available:
 - **FastAPI Application**: http://localhost:8000
   - API Documentation: http://localhost:8000/docs
   - Health Check: http://localhost:8000/health
+  - Neo4j Hello World: http://localhost:8000/neo4j/hello-world
+  - Neo4j Health Check: http://localhost:8000/neo4j/health
 
 - **pgAdmin**:
   - URL: http://localhost:5050
   - Email: admin@example.com
   - Password: adminpassword
+
+- **Neo4j Browser**:
+  - URL: http://localhost:7474
+  - Connect URL: neo4j://localhost:7687
+  - Username: neo4j
+  - Password: password
 
 ### Database Connection in pgAdmin
 
@@ -51,12 +59,33 @@ To connect to PostgreSQL using pgAdmin:
    - Username: user
    - Password: password
 
+### Neo4j Browser Usage
+
+To use Neo4j Browser:
+
+1. Access Neo4j Browser at http://localhost:7474
+2. Connect with:
+   - URL: neo4j://localhost:7687
+   - Username: neo4j
+   - Password: password
+3. Run Cypher queries, for example:
+   ```cypher
+   // Retrieve the Hello World message
+   MATCH (message:Message)
+   WHERE message.text = 'Hello, World!'
+   RETURN message
+   
+   // View all nodes
+   MATCH (n) RETURN n LIMIT 25
+   ```
+
 ## Development
 
 The project uses:
 - FastAPI for the web framework
-- PostgreSQL for the database
-- pgAdmin for database management
+- PostgreSQL for relational data storage
+- Neo4j for graph database functionality
+- pgAdmin for PostgreSQL management
 - Docker for containerization
 
 ### Development Commands
@@ -127,10 +156,11 @@ If you encounter issues:
    docker compose up -d --build
    ```
 
-3. Verify database connection:
+3. Verify database connections:
    ```bash
-   # Check API health endpoint
+   # Check API health endpoints
    curl http://localhost:8000/health
+   curl http://localhost:8000/neo4j/health
    ```
 
 ## Authentication
@@ -150,6 +180,10 @@ JWT tokens contain claims about the user, including:
 - `exp`: Token expiration timestamp
 
 ## API Endpoints
+
+### Neo4j Endpoints
+- `GET /neo4j/hello-world`: Creates a "Hello, World!" node in Neo4j and returns it
+- `GET /neo4j/health`: Verifies Neo4j connection is working
 
 ### Authentication Endpoints
 - `POST /auth/register`: Register a new user
