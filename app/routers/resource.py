@@ -57,6 +57,48 @@ async def create_resource(
     
     return new_resource
 
+@router.post("/resources/{resource_id}/link/{related_resource_id}")
+async def link_related_resources(
+    resource_id: uuid.UUID,
+    related_resource_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Link two resources as related, if the user owns the primary resource."""
+    try:
+        # Fetch primary resource with relationships preloaded
+        result = await db.execute(
+            select(Resource)
+            .options(selectinload(Resource.related_resources))  # ✅ Preload relationships
+            .filter(Resource.id == resource_id)
+        )
+        primary_resource = result.scalars().first()
+
+        # Fetch related resource (without lazy loading issues)
+        result = await db.execute(select(Resource).filter(Resource.id == related_resource_id))
+        related_resource = result.scalars().first()
+
+        # Ensure both resources exist
+        if not primary_resource or not related_resource:
+            raise HTTPException(status_code=404, detail="One or both resources not found")
+
+        # Ensure user owns the primary resource
+        if primary_resource.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to modify this resource")
+
+        # ✅ Append the related resource properly
+        if related_resource not in primary_resource.related_resources:
+            primary_resource.related_resources.append(related_resource)
+
+        await db.commit()
+        await db.refresh(primary_resource)  # ✅ Refresh after commit to update relationships
+
+        return {"message": "Resources linked successfully"}
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
 
 
 @router.put("/resources/{resource_id}", response_model=ResourceSchema)
