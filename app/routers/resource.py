@@ -8,7 +8,9 @@ from app.schemas.resource import ResourceSchema, ResourceCreateSchema, ResourceU
 from app.routers.dependencies import get_current_user
 import uuid
 
-router = APIRouter()
+router = APIRouter(prefix="/resources",
+    tags=["Resources"]
+)
 
 
 @router.get("/resources/", response_model=list[ResourceSchema])
@@ -101,7 +103,7 @@ async def link_related_resources(
 
 
 
-@router.put("/resources/{resource_id}", response_model=ResourceSchema)
+@router.put("/{resource_id}", response_model=ResourceSchema)
 async def update_resource(
     resource_id: uuid.UUID, 
     resource_data: ResourceUpdateSchema, 
@@ -118,13 +120,21 @@ async def update_resource(
     if resource.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this resource")
 
-    for key, value in resource_data.dict(exclude_unset=True).items():
+    # ✅ Convert HttpUrl objects to strings
+    update_data = resource_data.dict(exclude_unset=True)
+    if "profile_picture" in update_data and update_data["profile_picture"]:
+        update_data["profile_picture"] = str(update_data["profile_picture"])
+    if "source_url" in update_data and update_data["source_url"]:
+        update_data["source_url"] = str(update_data["source_url"])
+
+    for key, value in update_data.items():
         setattr(resource, key, value)
 
     await db.commit()
     await db.refresh(resource)
     
     return resource
+
 
 
 @router.delete("/resources/{resource_id}")
