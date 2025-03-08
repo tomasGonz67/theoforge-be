@@ -108,7 +108,7 @@ docker compose exec api pytest tests/path/to/test_file.py
    ```
 3. Run tests:
    ```bash
-   docker compose exec api pytest
+   docker compose exec api pytest --cov
    ```
 4. If tests pass, commit your changes
 

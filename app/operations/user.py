@@ -11,11 +11,10 @@ import logging
 from app.models.user import User, UserRole, SubscriptionPlan
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.core.security import hash_password, verify_password
-from settings.config import Settings  
+from settings.config import settings  
 from app.database import DbService
 from app.operations.jwt_service import decode_token
 
-settings = Settings()  
 logger = logging.getLogger(__name__)
 
 # Base repository for data access
@@ -89,11 +88,16 @@ class RegistrationService:
             user_count = await self.repository.count()
             role = UserRole.ADMIN if user_count == 0 else UserRole.USER
             
+            # Determine email verification status based on config and role
+            # Admin users are always verified regardless of config
+            is_admin = role == UserRole.ADMIN
+            email_verified = is_admin or not settings.require_email_verification
+            
             # Create new user instance with determined role and verification
             new_user = User(
                 **validated_data,
                 role=role,
-                email_verified=(role == UserRole.ADMIN),  # True for admin, False for regular users
+                email_verified=email_verified,  # Set based on config and role
                 subscription_plan=SubscriptionPlan.FREE,  # Default plan
                 phone_number=None,
                 address=None,
@@ -120,10 +124,13 @@ class AuthenticationService:
         """Authenticate a user by email and password."""
         user = await self.repository.get_by_email(email)
         if user:
-            if user.email_verified is False:
+            # Only check email verification if it's required in settings
+            if settings.require_email_verification and not user.email_verified:
                 return None
+            
             if user.is_locked:
                 return None
+                
             if verify_password(password, user.hashed_password):
                 user.failed_login_attempts = 0
                 return user
