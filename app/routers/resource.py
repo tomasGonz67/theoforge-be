@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
 from app.database import get_db
 from app.models.resource import Resource
 from app.operations.resource import create_resource
 from app.utils.minio_client import minio_client, BUCKET_NAME
 from app.routers.dependencies import get_current_user
-from app.schemas.resource import ResourceSchema
+from app.schemas.resource import ResourceSchema, ResourceUpdateSchema
 import uuid
 
 router = APIRouter(prefix="/resources", tags=["Resources"])
@@ -25,10 +26,41 @@ async def upload_resource(
 
     return await create_resource(db, file, title, description, user)
 
+@router.get("/", response_model=list[ResourceSchema])
+async def list_resources(db: AsyncSession = Depends(get_db)):
+    """Retrieve all resources."""
+    result = await db.execute(select(Resource).options(joinedload(Resource.related_resources)))
+    resources = result.scalars().all()
+    return resources
 
-@router.get("/{resource_id}/download")
-async def download_resource(resource_id: uuid.UUID, db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
-    """Generate a presigned URL for a resource."""
+@router.get("/{resource_id}", response_model=ResourceSchema)
+async def get_resource(resource_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Retrieve a single resource by ID."""
+    result = await db.execute(
+        select(Resource)
+        .filter(Resource.id == resource_id)
+        .options(joinedload(Resource.related_resources))
+    )
+    resource = result.unique().scalar_one_or_none()  # ✅ FIXED
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    
+    return resource
+
+
+from fastapi import File
+from app.operations.resource import update_resource_file  # Ensure this function exists
+
+@router.put("/{resource_id}", response_model=ResourceSchema)
+async def update_resource(
+    resource_id: uuid.UUID,
+    resource_update: ResourceUpdateSchema = Depends(),
+    file: UploadFile = None,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    """Update a resource and optionally replace the uploaded file."""
     result = await db.execute(select(Resource).filter(Resource.id == resource_id))
     resource = result.scalar_one_or_none()
 
@@ -36,12 +68,78 @@ async def download_resource(resource_id: uuid.UUID, db: AsyncSession = Depends(g
         raise HTTPException(status_code=404, detail="Resource not found")
 
     if resource.user_id != user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to access this resource")
+        raise HTTPException(status_code=403, detail="Not authorized to update this resource")
 
-    try:
-        # Generate a presigned URL for downloading the file
-        url = minio_client.presigned_get_object(BUCKET_NAME, resource.file_path)
-        return {"download_url": url}
+    update_data = resource_update.dict(exclude_unset=True)
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"File retrieval failed: {str(e)}")
+    # Convert HttpUrl fields to str if present
+    if "profile_picture" in update_data and update_data["profile_picture"]:
+        update_data["profile_picture"] = str(update_data["profile_picture"])
+    if "source_url" in update_data and update_data["source_url"]:
+        update_data["source_url"] = str(update_data["source_url"])
+
+    # Ensure `resource_type` is not set to NULL if not provided
+    if "resource_type" not in update_data or update_data["resource_type"] is None:
+        update_data["resource_type"] = resource.resource_type
+
+    # Convert empty strings to None or empty lists where appropriate
+    for key, value in update_data.items():
+        if isinstance(value, str) and value.strip() == "":
+            update_data[key] = None  # Convert empty strings to None
+        elif key == "tags" and (not isinstance(value, list) or value is None):
+            update_data[key] = []  # Convert invalid tags input to an empty list
+
+    # If a new file is uploaded, replace the existing file
+    if file:
+        new_file_path = await update_resource_file(db, resource, file)
+        update_data["file_path"] = new_file_path
+
+    for key, value in update_data.items():
+        setattr(resource, key, value)
+
+    await db.commit()
+    await db.refresh(resource)
+    return resource
+
+
+
+
+@router.delete("/{resource_id}")
+async def delete_resource(resource_id: uuid.UUID, db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
+    """Delete a resource."""
+    result = await db.execute(select(Resource).filter(Resource.id == resource_id))
+    resource = result.scalar_one_or_none()
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    if resource.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this resource")
+    
+    await db.delete(resource)
+    await db.commit()
+    return {"message": "Resource deleted successfully"}
+
+@router.post("/{resource_id}/link/{related_resource_id}")
+async def link_resources(
+    resource_id: uuid.UUID, 
+    related_resource_id: uuid.UUID, 
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    """Link two resources together."""
+    result = await db.execute(select(Resource).filter(Resource.id == resource_id))
+    resource = result.scalar_one_or_none()
+    
+    result_related = await db.execute(select(Resource).filter(Resource.id == related_resource_id))
+    related_resource = result_related.scalar_one_or_none()
+    
+    if not resource or not related_resource:
+        raise HTTPException(status_code=404, detail="One or both resources not found")
+    
+    if resource.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this resource")
+    
+    resource.related_resources.append(related_resource)
+    await db.commit()
+    return {"message": "Resources linked successfully"}

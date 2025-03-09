@@ -49,3 +49,13 @@ async def create_resource(db: AsyncSession, file: UploadFile, name: str, descrip
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
+
+async def update_resource_file(db: AsyncSession, resource: Resource, file: UploadFile):
+    """Upload a new file and update the resource's file path."""
+    file_path = f"{resource.user_id}/{uuid.uuid4()}-{file.filename}"
+    minio_client.put_object(BUCKET_NAME, file_path, file.file, file.size)
+    
+    # Update resource in DB
+    resource.file_path = file_path
+    await db.commit()
+    return file_path
