@@ -16,7 +16,7 @@ class ResourceBase(BaseModel):
     """Base schema for a resource with common attributes."""
     name: str = Field(..., description="Name of the resource")
     description: Optional[str] = Field(None, description="Detailed description of the resource")
-    category: str = Field(..., description="Category of the resource")
+    category: Optional[str] = Field(None, description="Category of the resource")  # Changed from required to optional
     resource_type: ResourceType = Field(..., description="Type of resource (PDF, IMAGE, LINK, etc.)")  # ✅ Added this
     tags: Optional[List[str]] = Field(default=[], description="List of associated tags")
     profile_picture: Optional[str] = Field(None, description="URL to the resource's profile picture")
