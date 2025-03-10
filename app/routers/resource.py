@@ -9,6 +9,8 @@ from app.utils.minio_client import minio_client, BUCKET_NAME
 from app.routers.dependencies import get_current_user
 from app.schemas.resource import ResourceSchema, ResourceUpdateSchema
 import uuid
+from typing import Optional
+
 
 router = APIRouter(prefix="/resources", tags=["Resources"])
 
@@ -55,47 +57,34 @@ from app.operations.resource import update_resource_file  # Ensure this function
 @router.put("/{resource_id}", response_model=ResourceSchema)
 async def update_resource(
     resource_id: uuid.UUID,
-    resource_update: ResourceUpdateSchema = Depends(),
+    name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
     file: UploadFile = None,
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    """Update a resource and optionally replace the uploaded file."""
+    """Update only provided fields."""
+    
+    # Fetch the resource
     result = await db.execute(select(Resource).filter(Resource.id == resource_id))
     resource = result.scalar_one_or_none()
-
+    
     if not resource:
         raise HTTPException(status_code=404, detail="Resource not found")
-
+    
     if resource.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this resource")
+    
+    # Update fields only if they are provided
+    if name:
+        resource.name = name
+    if description:
+        resource.description = description
 
-    update_data = resource_update.dict(exclude_unset=True)
-
-    # Convert HttpUrl fields to str if present
-    if "profile_picture" in update_data and update_data["profile_picture"]:
-        update_data["profile_picture"] = str(update_data["profile_picture"])
-    if "source_url" in update_data and update_data["source_url"]:
-        update_data["source_url"] = str(update_data["source_url"])
-
-    # Ensure `resource_type` is not set to NULL if not provided
-    if "resource_type" not in update_data or update_data["resource_type"] is None:
-        update_data["resource_type"] = resource.resource_type
-
-    # Convert empty strings to None or empty lists where appropriate
-    for key, value in update_data.items():
-        if isinstance(value, str) and value.strip() == "":
-            update_data[key] = None  # Convert empty strings to None
-        elif key == "tags" and (not isinstance(value, list) or value is None):
-            update_data[key] = []  # Convert invalid tags input to an empty list
-
-    # If a new file is uploaded, replace the existing file
+    # If a new file is uploaded, replace the old file
     if file:
         new_file_path = await update_resource_file(db, resource, file)
-        update_data["file_path"] = new_file_path
-
-    for key, value in update_data.items():
-        setattr(resource, key, value)
+        resource.file_path = new_file_path
 
     await db.commit()
     await db.refresh(resource)

@@ -64,17 +64,26 @@ class ResourceCreateSchema(ResourceBase):
     }
 
 
+from pydantic import field_validator
+
 class ResourceUpdateSchema(BaseModel):
     """Schema for updating a resource."""
     name: Optional[str] = Field(None, description="Updated name of the resource")
     description: Optional[str] = Field(None, description="Updated description")
     category: Optional[str] = Field(None, description="Updated category")
-    resource_type: Optional[ResourceType] = Field(None, description="Updated type of resource")  # ✅ Added this
+    resource_type: Optional[ResourceType] = Field(None, description="Updated type of resource")
     tags: Optional[List[str]] = Field(None, description="Updated list of tags")
     profile_picture: Optional[HttpUrl] = Field(None, description="Updated profile picture URL")
     source_url: Optional[HttpUrl] = Field(None, description="Updated source URL")
-    file_path: Optional[str] = Field(None, description="Updated file path in MinIO")  # ✅ Added this
+    file_path: Optional[str] = Field(None, description="Updated file path in MinIO")
     is_public: Optional[bool] = Field(None, description="Updated visibility status")
+
+    @field_validator("tags", mode="before")
+    def validate_tags(cls, value):
+        if value == "":  # Convert empty string to empty list
+            return []
+        return value
+
 
     model_config = {
         "json_schema_extra": {
