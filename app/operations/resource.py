@@ -4,6 +4,7 @@ from app.models.resource import Resource, ResourceType
 from app.utils.minio_client import minio_client, BUCKET_NAME
 import uuid
 import mimetypes
+from datetime import timedelta
 
 async def create_resource(db: AsyncSession, file: UploadFile, name: str, description: str, user):
     """Upload a file to MinIO and store metadata in the database."""
@@ -18,7 +19,7 @@ async def create_resource(db: AsyncSession, file: UploadFile, name: str, descrip
 
         # Generate a unique filename
         file_id = str(uuid.uuid4())
-        object_name = f"{user.id}/{file_id}.{extension}"
+        object_name = f"{user.id}/{file_id}.{extension}"  # Internal MinIO path
 
         # Upload file to MinIO
         minio_client.put_object(
@@ -30,14 +31,18 @@ async def create_resource(db: AsyncSession, file: UploadFile, name: str, descrip
             content_type=mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
         )
 
-        # Save metadata in the database
+        # ✅ Generate a presigned URL correctly using timedelta
+        external_url = minio_client.presigned_get_object(BUCKET_NAME, object_name, expires=timedelta(seconds=3600))
+
+        # ✅ Create the new resource with correct field names
         new_resource = Resource(
             id=uuid.uuid4(),
             user_id=user.id,
             resource_type=resource_type,
             name=name,
             description=description,
-            file_path=object_name  # Store MinIO object key
+            file_path=object_name,  # Store internal MinIO object key
+            external_url=external_url   # Store public MinIO URL
         )
 
         db.add(new_resource)
@@ -50,12 +55,23 @@ async def create_resource(db: AsyncSession, file: UploadFile, name: str, descrip
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
 
+
+
 async def update_resource_file(db: AsyncSession, resource: Resource, file: UploadFile):
-    """Upload a new file and update the resource's file path."""
-    file_path = f"{resource.user_id}/{uuid.uuid4()}-{file.filename}"
-    minio_client.put_object(BUCKET_NAME, file_path, file.file, file.size)
-    
+    """Upload a new file and update internal/external file paths."""
+    file_id = str(uuid.uuid4())
+    object_name = f"{resource.user_id}/{file_id}-{file.filename}"  # Internal path
+
+    # Upload new file to MinIO
+    minio_client.put_object(BUCKET_NAME, object_name, file.file, file.size)
+
+    # Generate a new presigned URL
+    external_url = minio_client.presigned_get_object(BUCKET_NAME, object_name, expires=3600)
+
     # Update resource in DB
-    resource.file_path = file_path
+    resource.internal_path = object_name
+    resource.external_url = external_url
     await db.commit()
-    return file_path
+    await db.refresh(resource)
+
+    return object_name

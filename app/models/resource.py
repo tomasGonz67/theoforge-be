@@ -34,6 +34,8 @@ class Resource(Base):
     profile_picture = Column(String, nullable=True)
     source_url = Column(String, nullable=True)
     file_path = Column(String, nullable=True)  # ✅ Added MinIO file path
+    internal_path = Column(String, nullable=True)  # ✅ New field for MinIO internal path
+    external_url = Column(String, nullable=True)  # ✅ New field for public access
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     is_public = Column(Boolean, default=True, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)

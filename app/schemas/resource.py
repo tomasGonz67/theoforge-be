@@ -24,6 +24,8 @@ class ResourceBase(BaseModel):
     file_path: Optional[str] = Field(None, description="File path in MinIO")  # ✅ Added this
     user_id: UUID4 = Field(..., description="ID of the user who created the resource")
     is_public: bool = Field(..., description="Visibility status of the resource")
+    internal_path: Optional[str] = Field(None, description="Internal MinIO object path for system use")
+    external_url: Optional[str] = Field(None, description="Public URL for downloading the resource")
 
     model_config = {
         "json_schema_extra": {

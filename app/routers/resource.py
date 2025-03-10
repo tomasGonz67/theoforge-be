@@ -10,6 +10,8 @@ from app.routers.dependencies import get_current_user
 from app.schemas.resource import ResourceSchema, ResourceUpdateSchema
 import uuid
 from typing import Optional
+from datetime import timedelta  # ✅ Add this import
+
 
 
 router = APIRouter(prefix="/resources", tags=["Resources"])
@@ -32,8 +34,12 @@ async def upload_resource(
 async def list_resources(db: AsyncSession = Depends(get_db)):
     """Retrieve all resources."""
     result = await db.execute(select(Resource).options(joinedload(Resource.related_resources)))
-    resources = result.scalars().all()
+    
+    # ✅ Ensure unique results to avoid InvalidRequestError
+    resources = result.unique().scalars().all()
+    
     return resources
+
 
 @router.get("/{resource_id}", response_model=ResourceSchema)
 async def get_resource(resource_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
@@ -132,3 +138,27 @@ async def link_resources(
     resource.related_resources.append(related_resource)
     await db.commit()
     return {"message": "Resources linked successfully"}
+
+from datetime import timedelta  # ✅ Make sure this is imported
+
+@router.get("/{resource_id}/download")
+async def get_resource_download_link(resource_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Generate a fresh presigned URL for downloading a resource."""
+    result = await db.execute(select(Resource).filter(Resource.id == resource_id))
+    resource = result.scalar_one_or_none()
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    # ✅ Ensure file_path exists
+    if not resource.file_path:
+        raise HTTPException(status_code=500, detail="File path is missing in the database")
+
+    # ✅ Generate a new presigned URL
+    try:
+        external_url = minio_client.presigned_get_object(BUCKET_NAME, resource.file_path, expires=timedelta(seconds=3600))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate download URL: {str(e)}")
+
+    return {"external_url": external_url}
+
