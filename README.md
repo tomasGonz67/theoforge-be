@@ -1,6 +1,6 @@
 # TheoForge Backend
 
-A FastAPI-based backend service with PostgreSQL and Neo4j databases, and pgAdmin for PostgreSQL management.
+A FastAPI-based backend service with PostgreSQL, Neo4j, and Qdrant databases, pgAdmin for PostgreSQL management, and MinIO for object storage.
 
 ### Prerequisites
 - Docker and Docker Compose
@@ -45,6 +45,16 @@ The following services will be available:
   - Username: neo4j
   - Password: password
 
+- **Qdrant Dashboard**:
+  - URL: http://localhost:6333/dashboard
+  - No authentication required
+  - API Endpoint: http://localhost:6333
+
+- **MinIO Console**:
+  - URL: http://localhost:9090
+  - Username: minioadmin
+  - Password: minioadmin
+
 ### Database Connection in pgAdmin
 
 To connect to PostgreSQL using pgAdmin:
@@ -79,12 +89,36 @@ To use Neo4j Browser:
    MATCH (n) RETURN n LIMIT 25
    ```
 
+### Qdrant Usage
+
+Qdrant is a vector database for similarity search, perfect for AI/ML applications:
+
+1. Access the Qdrant dashboard at http://localhost:6333/dashboard
+2. Use the API at http://localhost:6333 for programmatic access
+3. Basic operations include:
+   ```bash
+   # Create a collection (from your application code)
+   curl -X PUT 'http://localhost:6333/collections/theoforge_vectors' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "vectors": {
+         "size": 1536,
+         "distance": "Cosine"
+       }
+     }'
+   
+   # View collections
+   curl http://localhost:6333/collections
+   ```
+
 ## Development
 
 The project uses:
 - FastAPI for the web framework
 - PostgreSQL for relational data storage
 - Neo4j for graph database functionality
+- Qdrant for vector similarity search
+- MinIO for object storage
 - pgAdmin for PostgreSQL management
 - Docker for containerization
 
