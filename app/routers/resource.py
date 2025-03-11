@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 from app.database import get_db
 from app.models.resource import Resource
-from app.operations.resource import create_resource
+from app.operations.resource import create_resource, update_resource_file
 from app.utils.minio_client import minio_client, BUCKET_NAME
 from app.routers.dependencies import get_current_user
 from app.schemas.resource import ResourceSchema, ResourceUpdateSchema
@@ -56,9 +56,6 @@ async def get_resource(resource_id: uuid.UUID, db: AsyncSession = Depends(get_db
     
     return resource
 
-
-from fastapi import File
-from app.operations.resource import update_resource_file  # Ensure this function exists
 
 @router.put("/{resource_id}", response_model=ResourceSchema)
 async def update_resource(
@@ -116,10 +113,6 @@ async def update_resource(
     return resource
 
 
-
-
-
-
 @router.delete("/{resource_id}")
 async def delete_resource(resource_id: uuid.UUID, db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
     """Delete a resource."""
@@ -135,6 +128,7 @@ async def delete_resource(resource_id: uuid.UUID, db: AsyncSession = Depends(get
     await db.delete(resource)
     await db.commit()
     return {"message": "Resource deleted successfully"}
+
 
 @router.post("/{resource_id}/link/{related_resource_id}")
 async def link_resources(
@@ -160,7 +154,6 @@ async def link_resources(
     await db.commit()
     return {"message": "Resources linked successfully"}
 
-from datetime import timedelta  # ✅ Make sure this is imported
 
 @router.get("/{resource_id}/download")
 async def get_resource_download_link(resource_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
