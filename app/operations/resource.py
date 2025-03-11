@@ -66,7 +66,7 @@ async def update_resource_file(db: AsyncSession, resource: Resource, file: Uploa
     minio_client.put_object(BUCKET_NAME, object_name, file.file, file.size)
 
     # Generate a new presigned URL
-    external_url = minio_client.presigned_get_object(BUCKET_NAME, object_name, expires=3600)
+    external_url = minio_client.presigned_get_object(BUCKET_NAME, object_name, expires=timedelta(seconds=3600))
 
     # Update resource in DB
     resource.internal_path = object_name

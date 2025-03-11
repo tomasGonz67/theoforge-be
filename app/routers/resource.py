@@ -65,11 +65,12 @@ async def update_resource(
     resource_id: uuid.UUID,
     name: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),  # ✅ Allow updating category
     file: UploadFile = None,
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    """Update only provided fields."""
+    """Update general resource details and optionally replace the file."""
     
     # Fetch the resource
     result = await db.execute(select(Resource).filter(Resource.id == resource_id))
@@ -81,20 +82,28 @@ async def update_resource(
     if resource.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this resource")
     
-    # Update fields only if they are provided
+    # Update fields only if provided
     if name:
         resource.name = name
     if description:
         resource.description = description
+    if category:
+        resource.category = category
 
     # If a new file is uploaded, replace the old file
     if file:
         new_file_path = await update_resource_file(db, resource, file)
-        resource.file_path = new_file_path
+        resource.file_path = new_file_path  # ✅ Update MinIO file path
+        resource.internal_path = new_file_path  # ✅ Ensure internal path is updated
+
+        # Generate a new presigned URL for the new file
+        external_url = minio_client.presigned_get_object(BUCKET_NAME, new_file_path, expires=timedelta(seconds=3600))
+        resource.external_url = external_url  # ✅ Update external MinIO URL
 
     await db.commit()
     await db.refresh(resource)
     return resource
+
 
 
 
