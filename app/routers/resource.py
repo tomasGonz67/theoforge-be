@@ -11,6 +11,8 @@ from app.schemas.resource import ResourceSchema, ResourceUpdateSchema
 import uuid
 from typing import Optional
 from datetime import timedelta  # ✅ Add this import
+from app.models.resource import Resource, resource_association_table  # ✅ Import association table
+
 
 
 
@@ -137,7 +139,8 @@ async def link_resources(
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    """Link two resources together."""
+    """Link two resources together in the many-to-many table."""
+    
     result = await db.execute(select(Resource).filter(Resource.id == resource_id))
     resource = result.scalar_one_or_none()
     
@@ -149,10 +152,19 @@ async def link_resources(
     
     if resource.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to modify this resource")
-    
-    resource.related_resources.append(related_resource)
+
+    # ✅ Insert into the `resource_association` table
+    await db.execute(
+        resource_association_table.insert().values(
+            resource_id=resource.id,
+            related_resource_id=related_resource.id
+        )
+    )
+
     await db.commit()
     return {"message": "Resources linked successfully"}
+
+
 
 
 @router.get("/{resource_id}/download")
