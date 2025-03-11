@@ -121,7 +121,7 @@ Note: Database migrations are now automatically applied when the API service sta
 
 ```bash
 # Run all tests
-docker compose exec api pytest
+docker compose exec api pytest --cov
 
 # Run specific test file
 docker compose exec api pytest tests/path/to/test_file.py
