@@ -70,7 +70,7 @@ async def update_resource(
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    """Update general resource details and optionally replace the file."""
+    """Update resource details (name, description, category) and optionally replace the file."""
     
     # Fetch the resource
     result = await db.execute(select(Resource).filter(Resource.id == resource_id))
@@ -82,27 +82,39 @@ async def update_resource(
     if resource.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this resource")
     
-    # Update fields only if provided
+    # ✅ Update general fields if provided
+    update_values = {}
     if name:
-        resource.name = name
+        update_values["name"] = name
     if description:
-        resource.description = description
+        update_values["description"] = description
     if category:
-        resource.category = category
+        update_values["category"] = category
 
-    # If a new file is uploaded, replace the old file
+    # ✅ If a new file is uploaded, replace the old file
     if file:
         new_file_path = await update_resource_file(db, resource, file)
-        resource.file_path = new_file_path  # ✅ Update MinIO file path
-        resource.internal_path = new_file_path  # ✅ Ensure internal path is updated
+        update_values["file_path"] = new_file_path  # ✅ Update internal MinIO path
+        
+        # ✅ Generate new presigned URL
+        external_url = minio_client.presigned_get_object(
+            BUCKET_NAME, new_file_path, expires=timedelta(seconds=3600)
+        )
+        update_values["external_url"] = external_url  # ✅ Update external MinIO URL
 
-        # Generate a new presigned URL for the new file
-        external_url = minio_client.presigned_get_object(BUCKET_NAME, new_file_path, expires=timedelta(seconds=3600))
-        resource.external_url = external_url  # ✅ Update external MinIO URL
+    # ✅ Apply updates in a single query
+    if update_values:
+        await db.execute(
+            Resource.__table__.update()
+            .where(Resource.id == resource.id)
+            .values(**update_values)
+        )
+        await db.commit()
 
-    await db.commit()
+    # Refresh and return the updated resource
     await db.refresh(resource)
     return resource
+
 
 
 
