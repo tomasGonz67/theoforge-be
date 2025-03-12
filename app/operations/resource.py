@@ -6,8 +6,8 @@ import uuid
 import mimetypes
 from datetime import timedelta
 
-async def create_resource(db: AsyncSession, file: UploadFile, name: str, description: str, user):
-    """Upload a file to MinIO and store metadata in the database."""
+async def create_resource(db: AsyncSession, file: UploadFile, name: str, description: str, user, category=None, tags=None):
+    """Upload a file to MinIO and store metadata in the database, including category and tags."""
     try:
         extension = file.filename.split(".")[-1].lower()
         resource_type = ResourceType.OTHER
@@ -17,7 +17,7 @@ async def create_resource(db: AsyncSession, file: UploadFile, name: str, descrip
             resource_type = ResourceType.PDF
 
         file_id = str(uuid.uuid4())
-        object_name = f"{user.id}/{file_id}.{extension}"  # ✅ Internal MinIO path stored in file_path
+        object_name = f"{user.id}/{file_id}.{extension}"
 
         # Upload file to MinIO
         minio_client.put_object(
@@ -29,19 +29,24 @@ async def create_resource(db: AsyncSession, file: UploadFile, name: str, descrip
             content_type=mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
         )
 
-        # ✅ Generate a presigned URL
+        # Generate a presigned URL
         external_url = minio_client.presigned_get_object(BUCKET_NAME, object_name, expires=timedelta(seconds=3600))
 
-        # ✅ Store file_path instead of internal_path
+        # ✅ Store file path
         new_resource = Resource(
             id=uuid.uuid4(),
             user_id=user.id,
             resource_type=resource_type,
             name=name,
             description=description,
-            file_path=object_name,  # ✅ File path now stores internal MinIO path
-            external_url=external_url   # ✅ Public MinIO URL
+            file_path=object_name,
+            external_url=external_url,
+            category=category,
+            tags=tags if tags else None  # ✅ Store tags as a comma-separated string
         )
+
+        if category == "profile_picture":
+            new_resource.profile_picture = object_name  # ✅ Store in profile_picture column if applicable
 
         db.add(new_resource)
         await db.commit()
@@ -52,6 +57,7 @@ async def create_resource(db: AsyncSession, file: UploadFile, name: str, descrip
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
+
 
 
 

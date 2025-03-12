@@ -9,7 +9,7 @@ from app.utils.minio_client import minio_client, BUCKET_NAME
 from app.routers.dependencies import get_current_user
 from app.schemas.resource import ResourceSchema, ResourceUpdateSchema
 import uuid
-from typing import Optional
+from typing import Optional, List
 from datetime import timedelta  # ✅ Add this import
 from app.models.resource import Resource, resource_association_table  # ✅ Import association table
 
@@ -22,25 +22,23 @@ router = APIRouter(prefix="/resources", tags=["Resources"])
 async def upload_resource(
     title: str = Form(...),
     description: str = Form(None),
+    category: str = Form(None),  
+    tags: Optional[str] = Form(None),  # ✅ Accept tags as a comma-separated string
     file: UploadFile = None,
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    """Upload a file and create a resource record."""
+    """Upload a file and create a resource record with category and tags."""
     if not file:
         raise HTTPException(status_code=400, detail="File is required")
 
-    return await create_resource(db, file, title, description, user)
+    # ✅ Convert tags from comma-separated string to list
+    tags_list = [tag.strip() for tag in tags.split(",")] if tags else []
 
-@router.get("/", response_model=list[ResourceSchema])
-async def list_resources(db: AsyncSession = Depends(get_db)):
-    """Retrieve all resources."""
-    result = await db.execute(select(Resource).options(joinedload(Resource.related_resources)))
-    
-    # ✅ Ensure unique results to avoid InvalidRequestError
-    resources = result.unique().scalars().all()
-    
-    return resources
+    new_resource = await create_resource(db, file, title, description, user, category, tags_list)
+
+    return new_resource
+
 
 
 @router.get("/{resource_id}", response_model=ResourceSchema)
