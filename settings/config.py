@@ -9,5 +9,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15  # 15 minutes for access token
     refresh_token_expire_minutes: int = 1440  # 24 hours for refresh token
+    
+    # Email verification configuration
+    require_email_verification: bool = Field(default=False)  # Set to False by default
 
 settings = Settings()

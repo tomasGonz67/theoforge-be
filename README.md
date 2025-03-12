@@ -1,6 +1,6 @@
 # TheoForge Backend
 
-A FastAPI-based backend service with PostgreSQL database and pgAdmin for database management.
+A FastAPI-based backend service with PostgreSQL, Neo4j, and Qdrant databases, pgAdmin for PostgreSQL management, and MinIO for object storage.
 
 ### Prerequisites
 - Docker and Docker Compose
@@ -31,11 +31,29 @@ The following services will be available:
 - **FastAPI Application**: http://localhost:8000
   - API Documentation: http://localhost:8000/docs
   - Health Check: http://localhost:8000/health
+  - Neo4j Hello World: http://localhost:8000/neo4j/hello-world
+  - Neo4j Health Check: http://localhost:8000/neo4j/health
 
 - **pgAdmin**:
   - URL: http://localhost:5050
   - Email: admin@example.com
   - Password: adminpassword
+
+- **Neo4j Browser**:
+  - URL: http://localhost:7474
+  - Connect URL: neo4j://localhost:7687
+  - Username: neo4j
+  - Password: password
+
+- **Qdrant Dashboard**:
+  - URL: http://localhost:6333/dashboard
+  - No authentication required
+  - API Endpoint: http://localhost:6333
+
+- **MinIO Console**:
+  - URL: http://localhost:9090
+  - Username: minioadmin
+  - Password: minioadmin
 
 ### Database Connection in pgAdmin
 
@@ -51,12 +69,57 @@ To connect to PostgreSQL using pgAdmin:
    - Username: user
    - Password: password
 
+### Neo4j Browser Usage
+
+To use Neo4j Browser:
+
+1. Access Neo4j Browser at http://localhost:7474
+2. Connect with:
+   - URL: neo4j://localhost:7687
+   - Username: neo4j
+   - Password: password
+3. Run Cypher queries, for example:
+   ```cypher
+   // Retrieve the Hello World message
+   MATCH (message:Message)
+   WHERE message.text = 'Hello, World!'
+   RETURN message
+   
+   // View all nodes
+   MATCH (n) RETURN n LIMIT 25
+   ```
+
+### Qdrant Usage
+
+Qdrant is a vector database for similarity search, perfect for AI/ML applications:
+
+1. Access the Qdrant dashboard at http://localhost:6333/dashboard
+2. Use the API at http://localhost:6333 for programmatic access
+3. Basic operations include:
+   ```bash
+   # Create a collection (from your application code)
+   curl -X PUT 'http://localhost:6333/collections/theoforge_vectors' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "vectors": {
+         "size": 1536,
+         "distance": "Cosine"
+       }
+     }'
+   
+   # View collections
+   curl http://localhost:6333/collections
+   ```
+
 ## Development
 
 The project uses:
 - FastAPI for the web framework
-- PostgreSQL for the database
-- pgAdmin for database management
+- PostgreSQL for relational data storage
+- Neo4j for graph database functionality
+- Qdrant for vector similarity search
+- MinIO for object storage
+- pgAdmin for PostgreSQL management
 - Docker for containerization
 
 ### Development Commands
@@ -92,7 +155,7 @@ Note: Database migrations are now automatically applied when the API service sta
 
 ```bash
 # Run all tests
-docker compose exec api pytest
+docker compose exec api pytest --cov
 
 # Run specific test file
 docker compose exec api pytest tests/path/to/test_file.py
@@ -108,7 +171,7 @@ docker compose exec api pytest tests/path/to/test_file.py
    ```
 3. Run tests:
    ```bash
-   docker compose exec api pytest
+   docker compose exec api pytest --cov
    ```
 4. If tests pass, commit your changes
 
@@ -127,10 +190,11 @@ If you encounter issues:
    docker compose up -d --build
    ```
 
-3. Verify database connection:
+3. Verify database connections:
    ```bash
-   # Check API health endpoint
+   # Check API health endpoints
    curl http://localhost:8000/health
+   curl http://localhost:8000/neo4j/health
    ```
 
 ## Authentication
@@ -150,6 +214,10 @@ JWT tokens contain claims about the user, including:
 - `exp`: Token expiration timestamp
 
 ## API Endpoints
+
+### Neo4j Endpoints
+- `GET /neo4j/hello-world`: Creates a "Hello, World!" node in Neo4j and returns it
+- `GET /neo4j/health`: Verifies Neo4j connection is working
 
 ### Authentication Endpoints
 - `POST /auth/register`: Register a new user

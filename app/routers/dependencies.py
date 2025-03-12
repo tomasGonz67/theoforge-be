@@ -8,7 +8,7 @@ from app.database import Database
 from jose import JWTError
 from jwt import PyJWTError, ExpiredSignatureError
 from app.operations.jwt_service import decode_token
-from settings.config import Settings
+from settings.config import settings
 
 # Create OAuth2PasswordBearer for token extraction from Authorization header
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -57,8 +57,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-def get_settings() -> Settings:
+def get_settings():
     """Return application settings."""
-    return Settings()
+    return settings
 
-# Remove redundant dependency injection functions and let routes create repositories and services directly
