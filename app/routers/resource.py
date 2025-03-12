@@ -20,11 +20,17 @@ router = APIRouter(prefix="/resources", tags=["Resources"])
 
 @router.post("/", response_model=ResourceSchema)
 async def upload_resource(
-    title: str = Form(...),
-    description: str = Form(None),
-    category: str = Form(None),  
-    tags: Optional[str] = Form(None),  # ✅ Accept tags as a comma-separated string
-    file: UploadFile = None,
+    title: str = Form(..., description="Title of the resource."),
+    description: str = Form(None, description="Optional description of the resource."),
+    category: str = Form(
+        None, 
+        description='Category of the file. Enter `"profile_picture"` if uploading a profile picture.'
+    ),  
+    tags: Optional[str] = Form(
+        None, 
+        description="Comma-separated list of tags (e.g., 'AI, LLMs, Knowlege Graph')."
+    ),  
+    file: UploadFile = File(..., description="File to upload."),
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
 ):
@@ -38,6 +44,7 @@ async def upload_resource(
     new_resource = await create_resource(db, file, title, description, user, category, tags_list)
 
     return new_resource
+
 
 
 
