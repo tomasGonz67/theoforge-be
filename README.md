@@ -207,6 +207,8 @@ This API uses JWT token-based authentication:
    ```
    Authorization: Bearer <your_jwt_token>
    ```
+   
+   Frontend can `fetch` the login endpoint to retrieve header and create cookie. `fetch` the auth endpoint for token authentication using the cookie.
 
 JWT tokens contain claims about the user, including:
 - `sub`: The user's email
