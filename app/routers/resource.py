@@ -1,39 +1,52 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 from app.database import get_db
 from app.models.resource import Resource
-from app.operations.resource import create_resource
+from app.operations.resource import create_resource, update_resource_file
 from app.utils.minio_client import minio_client, BUCKET_NAME
 from app.routers.dependencies import get_current_user
 from app.schemas.resource import ResourceSchema, ResourceUpdateSchema
 import uuid
-from typing import Optional
+from typing import Optional, List
+from datetime import timedelta  # ✅ Add this import
+from app.models.resource import Resource, resource_association_table  # ✅ Import association table
+
+
 
 
 router = APIRouter(prefix="/resources", tags=["Resources"])
 
 @router.post("/", response_model=ResourceSchema)
 async def upload_resource(
-    title: str = Form(...),
-    description: str = Form(None),
-    file: UploadFile = None,
+    title: str = Form(..., description="Title of the resource."),
+    description: str = Form(None, description="Optional description of the resource."),
+    category: str = Form(
+        None, 
+        description='Category of the file. Enter `"profile_picture"` if uploading a profile picture.'
+    ),  
+    tags: Optional[str] = Form(
+        None, 
+        description="Comma-separated list of tags (e.g., 'AI, LLMs, Knowlege Graph')."
+    ),  
+    file: UploadFile = File(..., description="File to upload."),
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    """Upload a file and create a resource record."""
+    """Upload a file and create a resource record with category and tags."""
     if not file:
         raise HTTPException(status_code=400, detail="File is required")
 
-    return await create_resource(db, file, title, description, user)
+    # ✅ Convert tags from comma-separated string to list
+    tags_list = [tag.strip() for tag in tags.split(",")] if tags else []
 
-@router.get("/", response_model=list[ResourceSchema])
-async def list_resources(db: AsyncSession = Depends(get_db)):
-    """Retrieve all resources."""
-    result = await db.execute(select(Resource).options(joinedload(Resource.related_resources)))
-    resources = result.scalars().all()
-    return resources
+    new_resource = await create_resource(db, file, title, description, user, category, tags_list)
+
+    return new_resource
+
+
+
 
 @router.get("/{resource_id}", response_model=ResourceSchema)
 async def get_resource(resource_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
@@ -51,19 +64,17 @@ async def get_resource(resource_id: uuid.UUID, db: AsyncSession = Depends(get_db
     return resource
 
 
-from fastapi import File
-from app.operations.resource import update_resource_file  # Ensure this function exists
-
 @router.put("/{resource_id}", response_model=ResourceSchema)
 async def update_resource(
     resource_id: uuid.UUID,
     name: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),  # ✅ Allow updating category
     file: UploadFile = None,
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    """Update only provided fields."""
+    """Update resource details (name, description, category) and optionally replace the file."""
     
     # Fetch the resource
     result = await db.execute(select(Resource).filter(Resource.id == resource_id))
@@ -75,22 +86,38 @@ async def update_resource(
     if resource.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this resource")
     
-    # Update fields only if they are provided
+    # ✅ Update general fields if provided
+    update_values = {}
     if name:
-        resource.name = name
+        update_values["name"] = name
     if description:
-        resource.description = description
+        update_values["description"] = description
+    if category:
+        update_values["category"] = category
 
-    # If a new file is uploaded, replace the old file
+    # ✅ If a new file is uploaded, replace the old file
     if file:
         new_file_path = await update_resource_file(db, resource, file)
-        resource.file_path = new_file_path
+        update_values["file_path"] = new_file_path  # ✅ Update internal MinIO path
+        
+        # ✅ Generate new presigned URL
+        external_url = minio_client.presigned_get_object(
+            BUCKET_NAME, new_file_path, expires=timedelta(seconds=3600)
+        )
+        update_values["external_url"] = external_url  # ✅ Update external MinIO URL
 
-    await db.commit()
+    # ✅ Apply updates in a single query
+    if update_values:
+        await db.execute(
+            Resource.__table__.update()
+            .where(Resource.id == resource.id)
+            .values(**update_values)
+        )
+        await db.commit()
+
+    # Refresh and return the updated resource
     await db.refresh(resource)
     return resource
-
-
 
 
 @router.delete("/{resource_id}")
@@ -109,6 +136,7 @@ async def delete_resource(resource_id: uuid.UUID, db: AsyncSession = Depends(get
     await db.commit()
     return {"message": "Resource deleted successfully"}
 
+
 @router.post("/{resource_id}/link/{related_resource_id}")
 async def link_resources(
     resource_id: uuid.UUID, 
@@ -116,7 +144,8 @@ async def link_resources(
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    """Link two resources together."""
+    """Link two resources together in the many-to-many table."""
+    
     result = await db.execute(select(Resource).filter(Resource.id == resource_id))
     resource = result.scalar_one_or_none()
     
@@ -128,7 +157,39 @@ async def link_resources(
     
     if resource.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to modify this resource")
-    
-    resource.related_resources.append(related_resource)
+
+    # ✅ Insert into the `resource_association` table
+    await db.execute(
+        resource_association_table.insert().values(
+            resource_id=resource.id,
+            related_resource_id=related_resource.id
+        )
+    )
+
     await db.commit()
     return {"message": "Resources linked successfully"}
+
+
+
+
+@router.get("/{resource_id}/download")
+async def get_resource_download_link(resource_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Generate a fresh presigned URL for downloading a resource."""
+    result = await db.execute(select(Resource).filter(Resource.id == resource_id))
+    resource = result.scalar_one_or_none()
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    # ✅ Ensure file_path exists
+    if not resource.file_path:
+        raise HTTPException(status_code=500, detail="File path is missing in the database")
+
+    # ✅ Generate a new presigned URL
+    try:
+        external_url = minio_client.presigned_get_object(BUCKET_NAME, resource.file_path, expires=timedelta(seconds=3600))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate download URL: {str(e)}")
+
+    return {"external_url": external_url}
+

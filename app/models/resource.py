@@ -29,15 +29,17 @@ class Resource(Base):
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     category = Column(String, nullable=False)
-    resource_type = Column(Enum(ResourceType), nullable=False)  # ✅ Added Enum field
-    tags = Column(JSONB, nullable=True)  # JSON column
+    resource_type = Column(Enum(ResourceType), nullable=False)
+    tags = Column(JSONB, nullable=True)
     profile_picture = Column(String, nullable=True)
     source_url = Column(String, nullable=True)
-    file_path = Column(String, nullable=True)  # ✅ Added MinIO file path
+    file_path = Column(String, nullable=True)  # ✅ This now acts as the internal MinIO path
+    external_url = Column(String, nullable=True)  # ✅ Public MinIO URL
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     is_public = Column(Boolean, default=True, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+
 
     # ✅ Corrected User Relationship (One-to-Many)
     user = relationship("User", back_populates="resources", lazy="joined")
