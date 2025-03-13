@@ -162,7 +162,7 @@ class Neo4jDatabase:
         if cls._driver is not None:
             cls._driver.close()
             cls._driver = None
-    """
+
     @classmethod
     def create_constraints(cls):
         # Create constraints for Neo4j database
@@ -173,7 +173,7 @@ class Neo4jDatabase:
             session.run("CREATE CONSTRAINT userIdConstraint FOR (user:User) REQUIRE user.id IS UNIQUE")
             # Unique constraint: Ensures 'Group' nodes always have an 'id'
             session.run("CREATE CONSTRAINT groupIdConstraint FOR (group:Group) REQUIRE group.id IS UNIQUE")
-    """
+    
     @classmethod
     def import_csv(cls):
         """

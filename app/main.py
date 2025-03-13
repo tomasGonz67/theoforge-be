@@ -1,4 +1,5 @@
-from fastapi import FastAPI, FileResponse
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from sqlalchemy import create_engine, text
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -122,27 +123,26 @@ def neo4j_hello_world():
 
 
 CSV_FOLDER = "app/neo4j"
-"""
+
 @app.get("/csv/{filename}")
 async def get_csv(filename: str):
-    # Serving the example CSV files for Neo4j to import
+    """Serving the example CSV files for Neo4j to import"""
     file_path = os.path.join(CSV_FOLDER, filename)
     if os.path.exists(file_path):
         return FileResponse(file_path, media_type="text/csv")
     return {"error": "File not found"}
 
 @app.get("/neo4j/user-example")
-def neo4j_hello_world():
+def neo4j_user_example():
     
     # Creates multiple nodes and relationships in Neo4j with example CSV data.
     # This is a simple test to confirm Neo4j connectivity.
     
     try:
-        Neo4jDatabase.create_constraints()
+        # Neo4jDatabase.create_constraints()
         Neo4jDatabase.import_csv()
     except Exception as e:
         return {"error": f"Neo4j operation failed: {str(e)}"}
-"""
 
 @app.get("/neo4j/health")
 def neo4j_health():
