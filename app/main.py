@@ -7,6 +7,7 @@ import importlib
 import pkgutil
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.database import Base, Database, DbService, Neo4jDatabase, Neo4jService
 from app.routers import auth, guest
@@ -57,6 +58,8 @@ app.include_router(guest.router)
 @app.get("/")
 async def root():
     return {"message": "Hello World test"}
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 @app.get("/health")
 async def health():
