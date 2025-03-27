@@ -162,16 +162,11 @@ def create_paragraph_knowledge_graph(request: ParagraphRequest):
         - 3 relationships are made, Keith --> TheoForge, Keith --> Apps, and Apps --> AI
     """
     try:
-        # Preprocess the text
         preprocessed_text = Neo4jKnowledgeGraphGenerator.preprocess_text(request.text)
-        
-        # Extract knowledge elements
         knowledge_elements = Neo4jKnowledgeGraphGenerator.extract_knowledge_elements(preprocessed_text)
-        
         # Generate Neo4j queries
         cypher_queries = Neo4jKnowledgeGraphGenerator.create_neo4j_knowledge_graph(knowledge_elements)
         
-        # Execute queries
         for query in cypher_queries:
             Neo4jService.execute_query(query)
         
