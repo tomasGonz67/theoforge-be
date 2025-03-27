@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import create_engine, text
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import Base, Database, DbService, Neo4jDatabase, Neo4jService
 from app.routers import auth, guest, resource
+from app.routers.dependencies import ParagraphRequest, Neo4jKnowledgeGraphGenerator
 
 # Get database URL from environment variable
 database_url = os.getenv("DATABASE_URL")
@@ -143,6 +144,66 @@ def neo4j_user_example():
         Neo4jDatabase.import_csv()
     except Exception as e:
         return {"error": f"Neo4j operation failed: {str(e)}"}
+
+@app.post("/neo4j/create-knowledge-graph")
+def create_paragraph_knowledge_graph(request: ParagraphRequest):
+    """
+    Create a knowledge graph from an input paragraph.
+    
+    This endpoint:
+    1. Preprocesses the input text
+    2. Extracts entities and relationships
+    3. Generates Neo4j Cypher queries
+    4. Executes the queries to create the knowledge graph
+
+    EXAMPLE:
+    "Keith founded TheoForge. Also, Keith creates apps. Meanwhile, apps use AI."
+        - This will create four entities: Keith, TheoForge, Apps, and AI.
+        - 3 relationships are made, Keith --> TheoForge, Keith --> Apps, and Apps --> AI
+    """
+    try:
+        # Preprocess the text
+        preprocessed_text = Neo4jKnowledgeGraphGenerator.preprocess_text(request.text)
+        
+        # Extract knowledge elements
+        knowledge_elements = Neo4jKnowledgeGraphGenerator.extract_knowledge_elements(preprocessed_text)
+        
+        # Generate Neo4j queries
+        cypher_queries = Neo4jKnowledgeGraphGenerator.create_neo4j_knowledge_graph(knowledge_elements)
+        
+        # Execute queries
+        for query in cypher_queries:
+            Neo4jService.execute_query(query)
+        
+        return {
+            "status": "Success",
+            "entities": knowledge_elements.get("entities", []),
+            "relationships": knowledge_elements.get("relationships", [])
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Knowledge graph creation failed: {str(e)}")
+
+@app.get("/neo4j/verify-entities-and-relationships")
+def verify_graph():
+    """
+    Verify entities and relationships in the graph
+    """
+    verify_entities_query = """
+    MATCH (n:Entity) RETURN n.text AS text, n.type AS type
+    """
+    verify_relationships_query = """
+    MATCH (a)-[r]->(b) 
+    RETURN a.text AS source, type(r) AS relationship_type, b.text AS target
+    """
+    
+    entities = Neo4jService.execute_query(verify_entities_query)
+    relationships = Neo4jService.execute_query(verify_relationships_query)
+    
+    return {
+        "entities": entities,
+        "relationships": relationships
+    }
 
 @app.get("/neo4j/health")
 def neo4j_health():
