@@ -154,7 +154,7 @@ class Neo4jKnowledgeGraphGenerator:
         for relationship in knowledge_elements.get("relationships", []):
             safe_subject = relationship['subject'].replace("'", "\\'")
             safe_object = relationship['object'].replace("'", "\\'")
-            safe_predicate = relationship['predicate'].replace("'", "\\'").upper().replace(" ", "_")  # Convert to uppercase
+            safe_predicate = relationship['predicate'].replace("'", "\\'").upper().replace(" ", "_")
 
             create_relationship_query = f"""
             MATCH (subject:Entity {{text: '{safe_subject}'}})

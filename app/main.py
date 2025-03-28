@@ -157,7 +157,8 @@ def create_paragraph_knowledge_graph(request: ParagraphRequest):
     4. Executes the queries to create the knowledge graph
 
     EXAMPLE:
-    "Keith founded TheoForge. Also, Keith creates apps. Meanwhile, apps use AI."
+    "Keith founded TheoForge. Also, Keith creates apps. Meanwhile, apps use AI. OpenAI makes models and Google makes AI. TheoForge uses AI. Then, students are programming TheoForge."
+        
         - This will create four entities: Keith, TheoForge, Apps, and AI.
         - 3 relationships are made, Keith --> TheoForge, Keith --> Apps, and Apps --> AI
     """
@@ -199,6 +200,18 @@ def verify_graph():
         "entities": entities,
         "relationships": relationships
     }
+
+@app.delete("/neo4j/delete-all")
+async def delete_all():
+    """Delete all nodes and relationships in Neo4j database"""
+    try:
+        result = Neo4jService.execute_query("MATCH (n) DETACH DELETE n")
+
+        return {
+            "status": "Success",
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 @app.get("/neo4j/health")
 def neo4j_health():
