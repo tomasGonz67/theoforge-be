@@ -3,9 +3,9 @@ from fastapi.responses import FileResponse
 import os
 
 from app.database import Neo4jDatabase, Neo4jService
-from app.operations.neo4j import ParagraphRequest, Neo4jKnowledgeGraphGenerator
-
-# Create a router for neo4j endpoints
+from app.operations.neo4j import Neo4jKnowledgeGraphLoader
+from app.schemas.neo4j import KnowledgeGraphInput, KnowledgeGraphResponse, VerifyGraphResponse
+# Router for Neo4j operations
 router = APIRouter(prefix="/neo4j", tags=["Neo4j"])
 
 @router.get("/neo4j/hello-world")
@@ -60,48 +60,34 @@ def neo4j_user_example():
     except Exception as e:
         return {"error": f"Neo4j operation failed: {str(e)}"}
 
-@router.post("/neo4j/create-knowledge-graph")
-def create_paragraph_knowledge_graph(request: ParagraphRequest):
+@router.post("/load-knowledge-graph", response_model=KnowledgeGraphResponse)
+def load_knowledge_graph_endpoint(request: KnowledgeGraphInput):
     """
-    Create a knowledge graph from an input paragraph.
-    
-    This endpoint:
-    1. Preprocesses the input text
-    2. Extracts entities and relationships
-    3. Generates Neo4j Cypher queries
-    4. Executes the queries to create the knowledge graph
+    Load structured knowledge graph data (entities and relationships) into Neo4j.
 
-    EXAMPLE:
-    "Keith founded TheoForge. Also, Keith creates apps. Meanwhile, apps use AI. OpenAI makes models and Google makes AI. TheoForge uses AI. Then, students are programming TheoForge."
-        
-        - This will create four entities: Keith, TheoForge, Apps, and AI.
-        - 3 relationships are made, Keith --> TheoForge, Keith --> Apps, and Apps --> AI
+    This endpoint accepts a JSON object containing lists of entities and relationships
+    and uses the Neo4jKnowledgeGraphLoader to persist them in the database.
     """
     try:
-        preprocessed_text = Neo4jKnowledgeGraphGenerator.preprocess_text(request.text)
-        knowledge_elements = Neo4jKnowledgeGraphGenerator.extract_knowledge_elements(preprocessed_text)
-        # Generate Neo4j queries
-        cypher_queries = Neo4jKnowledgeGraphGenerator.create_neo4j_knowledge_graph(knowledge_elements)
-        
-        for query in cypher_queries:
-            Neo4jService.execute_query(query)
-        
-        return {
-            "status": "Success",
-            "entities": knowledge_elements.get("entities", []),
-            "relationships": knowledge_elements.get("relationships", [])
-        }
+        # Load data using the Neo4jKnowledgeGraphLoader
+        result = Neo4jKnowledgeGraphLoader.load_knowledge_graph(request.model_dump())
+
+        if result.get("status") == "error":
+            raise HTTPException(status_code=500, detail=result.get("message", "Knowledge graph loading failed"))
+
+        return result
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Knowledge graph creation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Knowledge graph loading failed: {str(e)}")
 
-@router.get("/neo4j/verify-entities-and-relationships")
-def verify_graph():
+@router.get("/verify-graph", response_model=VerifyGraphResponse)
+def verify_graph_endpoint():
     """
     Verify entities and relationships in the graph
     """
+    # Query to fetch all nodes with their text and labels
     verify_entities_query = """
-    MATCH (n:Entity) RETURN n.text AS text, n.type AS type
+    MATCH (n) WHERE n.text IS NOT NULL RETURN n.text AS text, labels(n) AS labels
     """
     verify_relationships_query = """
     MATCH (a)-[r]->(b) 

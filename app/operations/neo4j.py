@@ -1,102 +1,100 @@
-from pydantic import BaseModel
 from typing import List, Dict, Any
-import re
-import spacy
+import logging
+from app.database import Neo4jService
+
+logger = logging.getLogger(__name__)
 
 # Neo4j Knowledge Graph Creation
-class ParagraphRequest(BaseModel):
-    text: str
-
-class Neo4jKnowledgeGraphGenerator:
-    @staticmethod
-    def preprocess_text(text: str) -> str:
-        """Preprocess the input text by removing extra whitespaces and cleaning up punctuation."""
-        # Remove multiple spaces and newlines
-        text = re.sub(r'\s+', ' ', text).strip()
-        return text
-
-    @staticmethod
-    def extract_knowledge_elements(text: str) -> Dict[str, List[Any]]:
-        """Use spaCy to extract key elements from the text for building a knowledge graph."""
-        nlp = spacy.load("en_core_web_sm")
-        nlp.add_pipe("merge_entities")
-        
-        # Process the text
-        doc = nlp(text)
-        entities = []
-        relationships = []
-        
-        for ent in doc.ents:
-            entities.append({
-                "text": ent.text.strip(),
-                "label": ent.label_
-            })
-        
-        for token in doc:
-            if token.pos_ == "NOUN" and not any(token.text == ent['text'] for ent in entities):
-                entities.append({
-                    "text": token.text.strip(),
-                    "label": "COMMON_NOUN"
-                })
-        
-        # Extract subject-verb-object relationships
-        for sent in doc.sents:
-            for token in sent:
-                if token.pos_ == "VERB":
-                    subject = None
-                    objects = []
-                    
-                    for child in token.children:
-                        if child.dep_ in ["nsubj", "nsubjpass"]:
-                            subject = " ".join([t.text for t in child.subtree]).strip()
-                        
-                        if child.dep_ in ["dobj", "pobj", "iobj"]:
-                            obj = " ".join([t.text for t in child.subtree]).strip()
-                            objects.append(obj)
-                    
-                    # Create relationships for each subject-object pair
-                    if subject and objects:
-                        for obj in objects:
-                            relationships.append({
-                                "subject": subject,
-                                "predicate": token.lemma_,
-                                "object": obj
-                            })
-        
-        # Remove duplicates
-        entities = list({v['text']: v for v in entities}.values())
-        relationships = list({(r['subject'], r['predicate'], r['object']): r for r in relationships}.values())
-        
-        return {
-            "entities": entities,
-            "relationships": relationships
-        }
+class Neo4jKnowledgeGraphLoader:
+    # Note: Text extraction/cleaning is expected to happen upstream (e.g., via GPT).
 
 
     @staticmethod
-    def create_neo4j_knowledge_graph(knowledge_elements: Dict[str, List[Any]]) -> List[str]:
-        """Generate Cypher queries to create a knowledge graph in Neo4j."""
-        queries = []
+    def _generate_parameterized_queries(knowledge_elements: Dict[str, List[Any]]) -> List[tuple[str, Dict[str, Any]]]:
+        """Generate parameterized Cypher queries and their parameters."""
+        parameterized_queries = []
         
-        # Create entity nodes with sanitized text
+        # Generate parameterized queries for entities
         for entity in knowledge_elements.get("entities", []):
-            safe_text = entity['text'].replace("'", "\\'")
-            create_entity_query = f"""
-            MERGE (e:Entity {{text: '{safe_text}', type: '{entity['label']}'}})
-            """
-            queries.append(create_entity_query)
-        
-        # Create relationships between entities
-        for relationship in knowledge_elements.get("relationships", []):
-            safe_subject = relationship['subject'].replace("'", "\\'")
-            safe_object = relationship['object'].replace("'", "\\'")
-            safe_predicate = relationship['predicate'].replace("'", "\\'").upper().replace(" ", "_")
+            # Sanitize label for Cypher compatibility
+            label = ''.join(filter(lambda x: x.isalnum() or x == '_', entity.get('label', 'Entity').replace(' ', '_')))
+            if not label: label = 'Entity'
 
-            create_relationship_query = f"""
-            MATCH (subject:Entity {{text: '{safe_subject}'}})
-            MATCH (object:Entity {{text: '{safe_object}'}})
-            MERGE (subject)-[:{safe_predicate}]->(object)
-            """
-            queries.append(create_relationship_query)
+            query = f"MERGE (e:{label} {{text: $text}})"
+            params = {"text": entity.get('text', '')}
+            parameterized_queries.append((query, params))
         
-        return queries
+        # Generate parameterized queries for relationships
+        entities_dict = {e.get('text'): e.get('label', 'Entity') for e in knowledge_elements.get("entities", [])}
+
+        for relationship in knowledge_elements.get("relationships", []):
+            subject_text = relationship.get('subject', '')
+            object_text = relationship.get('object', '')
+
+            # Sanitize labels and predicate for Cypher compatibility
+            subject_label_raw = entities_dict.get(subject_text, 'Entity')
+            object_label_raw = entities_dict.get(object_text, 'Entity')
+            predicate_raw = relationship.get('predicate', 'RELATED_TO')
+
+            subject_label = ''.join(filter(lambda x: x.isalnum() or x == '_', subject_label_raw.replace(' ', '_')))
+            if not subject_label: subject_label = 'Entity'
+            object_label = ''.join(filter(lambda x: x.isalnum() or x == '_', object_label_raw.replace(' ', '_')))
+            if not object_label: object_label = 'Entity'
+            predicate = ''.join(filter(lambda x: x.isalnum() or x == '_', predicate_raw.upper().replace(' ', '_')))
+            if not predicate: predicate = 'RELATED_TO'
+
+
+            query = f"""
+            MATCH (subject:{subject_label} {{text: $subject_text}})
+            MATCH (object:{object_label} {{text: $object_text}})
+            MERGE (subject)-[:{predicate}]->(object)
+            """
+            params = {
+                "subject_text": subject_text,
+                "object_text": object_text
+            }
+            parameterized_queries.append((query, params))
+        
+        return parameterized_queries
+
+    @staticmethod
+    def load_knowledge_graph(knowledge_elements: Dict[str, List[Any]]):
+        """Generate and execute parameterized Cypher queries individually."""
+        parameterized_queries = Neo4jKnowledgeGraphLoader._generate_parameterized_queries(knowledge_elements)
+        if not parameterized_queries:
+            logger.info("No parameterized queries generated.")
+            return {"status": "success", "nodes_processed": 0, "relationships_processed": 0, "message": "No data to load."}
+
+        # Initialize approximate counters (MERGE doesn't guarantee creation)
+        nodes_processed = 0
+        relationships_processed = 0
+        errors = []
+
+        try:
+            # Execute each query individually
+            for query, params in parameterized_queries:
+                try:
+                    Neo4jService.execute_query(query, parameters=params)
+                    # Increment approximate counters based on query type
+                    if "MERGE (e:" in query:
+                        nodes_processed += 1
+                    elif "MERGE (subject)-[:" in query:
+                        relationships_processed += 1
+                except Exception as query_error:
+                    logger.error(f"Error executing query: {query} with params: {params}. Error: {query_error}")
+                    errors.append(str(query_error))
+                    # Continue processing even if one query fails, report errors at the end
+
+            if errors:
+                 # Report failure if any query errors occurred
+                 error_message = "; ".join(errors)
+                 logger.error(f"Completed loading knowledge graph with errors: {error_message}")
+                 return {"status": "error", "message": f"Completed with errors: {error_message}", "nodes_processed": nodes_processed, "relationships_processed": relationships_processed}
+            else:
+                 logger.info(f"Successfully executed {len(parameterized_queries)} queries. Processed approx {nodes_processed} nodes and {relationships_processed} relationships.")
+                 return {"status": "success", "nodes_processed": nodes_processed, "relationships_processed": relationships_processed}
+
+        except Exception as e:
+            # Catch unexpected exceptions during processing
+            logger.error(f"Failed to load knowledge graph into Neo4j due to an unexpected error: {e}")
+            return {"status": "error", "message": str(e)}
