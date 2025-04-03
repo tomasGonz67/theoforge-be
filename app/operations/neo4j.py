@@ -16,13 +16,19 @@ class Neo4jKnowledgeGraphLoader:
         
         # Generate parameterized queries for entities
         for entity in knowledge_elements.get("entities", []):
-            # Sanitize label for Cypher compatibility
-            label = ''.join(filter(lambda x: x.isalnum() or x == '_', entity.get('label', 'Entity').replace(' ', '_')))
-            if not label: label = 'Entity'
+            # Map input keys (expecting simple keys based on latest logs) and sanitize label
+            entity_text = entity.get('name', '') # Use 'name'
+            entity_type = entity.get('type', 'Entity') # Use 'type'
+            label = ''.join(filter(lambda x: x.isalnum() or x == '_', entity_type.replace(' ', '_')))
+            if not label: label = 'Entity' # Default label
 
-            # Base query and params
-            query = f"MERGE (e:{label} {{text: $text}})"
-            params = {"text": entity.get('text', '')}
+            # Skip creating entity if text is empty
+            if not entity_text:
+                logger.warning(f"Skipping entity creation due to empty name: {entity}")
+                continue
+            # Base query and params - Add :Document label alongside specific label
+            query = f"MERGE (e:Document:{label} {{text: $text}})"
+            params = {"text": entity_text}
 
             # Add embedding if present
             embedding = entity.get('embedding')
@@ -35,28 +41,34 @@ class Neo4jKnowledgeGraphLoader:
             parameterized_queries.append((query, params))
         
         # Generate parameterized queries for relationships
-        entities_dict = {e.get('text'): e.get('label', 'Entity') for e in knowledge_elements.get("entities", [])}
+        # Create a mapping from entity name (text) to its primary label (type), using correct keys
+        entities_dict = {e.get('name', ''): ''.join(filter(lambda x: x.isalnum() or x == '_', e.get('type', 'Entity').replace(' ', '_'))) or 'Entity'
+                         for e in knowledge_elements.get("entities", [])}
 
         for relationship in knowledge_elements.get("relationships", []):
-            subject_text = relationship.get('subject', '')
-            object_text = relationship.get('object', '')
+            # Map input keys (expecting simple keys based on latest logs)
+            subject_text = relationship.get('source', '') # Use 'source'
+            object_text = relationship.get('target', '') # Use 'target'
+            predicate_raw = relationship.get('relationship', 'RELATED_TO') # Use 'relationship'
 
-            # Sanitize labels and predicate for Cypher compatibility
-            subject_label_raw = entities_dict.get(subject_text, 'Entity')
-            object_label_raw = entities_dict.get(object_text, 'Entity')
-            predicate_raw = relationship.get('predicate', 'RELATED_TO')
+            # Skip creating relationship if subject or object text is empty
+            if not subject_text or not object_text:
+                logger.warning(f"Skipping relationship creation due to empty source/target: {relationship}")
+                continue
+            # Get labels from our pre-computed dict and sanitize predicate
+            subject_label_raw = entities_dict.get(subject_text, 'Entity') # Use mapped label
+            object_label_raw = entities_dict.get(object_text, 'Entity') # Use mapped label
 
-            subject_label = ''.join(filter(lambda x: x.isalnum() or x == '_', subject_label_raw.replace(' ', '_')))
-            if not subject_label: subject_label = 'Entity'
-            object_label = ''.join(filter(lambda x: x.isalnum() or x == '_', object_label_raw.replace(' ', '_')))
-            if not object_label: object_label = 'Entity'
+            # Use the already sanitized labels from the entities_dict
+            subject_label = subject_label_raw
+            object_label = object_label_raw
             predicate = ''.join(filter(lambda x: x.isalnum() or x == '_', predicate_raw.upper().replace(' ', '_')))
             if not predicate: predicate = 'RELATED_TO'
 
 
             query = f"""
-            MATCH (subject:{subject_label} {{text: $subject_text}})
-            MATCH (object:{object_label} {{text: $object_text}})
+            MATCH (subject:Document:{subject_label} {{text: $subject_text}})
+            MATCH (object:Document:{object_label} {{text: $object_text}})
             MERGE (subject)-[:{predicate}]->(object)
             """
             params = {

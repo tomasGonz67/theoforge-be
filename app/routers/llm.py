@@ -19,7 +19,7 @@ def get_relevant_context(query_embedding):
 
     query = """
     MATCH (n:Document)
-    WITH n, cosineSimilarity(n.embedding, $queryEmbedding) AS similarity
+    WITH n, gds.similarity.cosine(n.embedding, $queryEmbedding) AS similarity
     ORDER BY similarity DESC
     LIMIT 5
     RETURN n.text AS context
@@ -29,9 +29,16 @@ def get_relevant_context(query_embedding):
 
 
 @router.post("/generate-response")
-def generate_response(user_input: str, query_embedding: list[float]):
+def generate_response(user_input: str): # Remove query_embedding from input
     try:
-        context = get_relevant_context(query_embedding)
+        # Generate query embedding from user input
+        embedding_response = client.embeddings.create(
+            input=[user_input],
+            model="text-embedding-3-small"
+        )
+        query_embedding = embedding_response.data[0].embedding
+
+        context = get_relevant_context(query_embedding) # Use generated embedding
 
         prompt = f"""
         Context: {context}
@@ -39,13 +46,17 @@ def generate_response(user_input: str, query_embedding: list[float]):
         Answer:
         """
 
-        response = client.completions.create(
-            model="gpt-4-turbo",
-            messages=[{"role": "system", "content": "You are an expert AI assistant."},
-                      {"role": "user", "content": prompt}],
+        # Use chat completions API
+        response = client.chat.completions.create(
+            model="gpt-4-turbo", # Or gpt-4o if preferred
+            messages=[
+                {"role": "system", "content": "You are an expert AI assistant. Use the provided context to answer the question."},
+                {"role": "user", "content": prompt} # Prompt already includes context and question
+            ],
             max_tokens=300
         )
 
-        return {"response": response["choices"][0]["text"]}
+        # Parse chat completions response
+        return {"response": response.choices[0].message.content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate response: {str(e)}")

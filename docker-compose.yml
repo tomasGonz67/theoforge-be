@@ -41,6 +41,8 @@ services:
       NEO4J_AUTH: neo4j/password
       NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
       #NEO4J_dbms_security_allow__csv__import__from__file__urls: 'true'
+      NEO4J_PLUGINS: '["graph-data-science"]' # Use correct GDS plugin name
+      NEO4J_dbms_security_procedures_unrestricted: 'gds.*' # Allow all GDS procedures/functions
     ports:
       - "7474:7474"  # HTTP
       - "7687:7687"  # Bolt protocol
@@ -89,10 +91,14 @@ services:
       - ./alembic.ini:/app/alembic.ini
       - ./pytest.ini:/app/pytest.ini
       - ./requirements.txt:/app/requirements.txt
+      # Mount the text_to_cleaning sub-package to the correct path within the container's app package
+      - ./app/text-to-cleaning:/app/app/text-to-cleaning
     depends_on:
       postgres:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      neo4j: # Add dependency on neo4j
         condition: service_healthy
     networks:
       - app-network
