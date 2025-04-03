@@ -86,8 +86,9 @@ def verify_graph_endpoint():
     Verify entities and relationships in the graph
     """
     # Query to fetch all nodes with their text and labels
+    # Query to fetch all nodes with their text, labels, and embedding
     verify_entities_query = """
-    MATCH (n) WHERE n.text IS NOT NULL RETURN n.text AS text, labels(n) AS labels
+    MATCH (n) WHERE n.text IS NOT NULL RETURN n.text AS text, labels(n) AS labels, n.embedding AS embedding
     """
     verify_relationships_query = """
     MATCH (a)-[r]->(b) 

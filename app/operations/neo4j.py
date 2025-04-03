@@ -20,8 +20,18 @@ class Neo4jKnowledgeGraphLoader:
             label = ''.join(filter(lambda x: x.isalnum() or x == '_', entity.get('label', 'Entity').replace(' ', '_')))
             if not label: label = 'Entity'
 
+            # Base query and params
             query = f"MERGE (e:{label} {{text: $text}})"
             params = {"text": entity.get('text', '')}
+
+            # Add embedding if present
+            embedding = entity.get('embedding')
+            if embedding is not None:
+                # Use ON CREATE SET / ON MATCH SET to add/update the embedding
+                query += " ON CREATE SET e.embedding = $embedding"
+                query += " ON MATCH SET e.embedding = $embedding"
+                params["embedding"] = embedding
+
             parameterized_queries.append((query, params))
         
         # Generate parameterized queries for relationships
