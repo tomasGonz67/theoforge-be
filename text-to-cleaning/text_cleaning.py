@@ -66,17 +66,28 @@ class TextCleaningService:
         # Access the content of the first choice
         content = response.choices[0].message.content
         print("API Response Content:", content)  # Debugging line
+
+        # Extract JSON content from markdown code blocks if present
+        if "```" in content:
+            # Find all content between code block markers
+            start_idx = content.find("```") + 3
+            # Find the end of the language identifier line if it exists
+            if content[start_idx:].find("\n") >= 0:
+                start_idx = start_idx + content[start_idx:].find("\n") + 1
+            end_idx = content.rfind("```")
+            if start_idx < end_idx:
+                content = content[start_idx:end_idx].strip()
         
         try:
             # Parse the response content as JSON
             return json.loads(content)
-        except json.JSONDecodeError:
-            raise ValueError(f"Invalid JSON response from OpenAI API: {content}")
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON response from OpenAI API: {content}\nError: {str(e)}")
         
     def _enhance_with_context(self, structured_data: Dict[str, Any]) -> Dict[str, Any]:
         """Add implied context to the structured data."""
         # Convert to string to send to GPT
-        data_str = str(structured_data)
+        data_str = json.dumps(structured_data, indent=2)
         
         prompt = f"""
         Review the following extracted entities and relationships:
@@ -107,8 +118,19 @@ class TextCleaningService:
         content = response.choices[0].message.content
         print("API Response Content:", content)  # Debugging line
         
+        # Extract JSON content from markdown code blocks if present
+        if "```" in content:
+            # Find all content between code block markers
+            start_idx = content.find("```") + 3
+            # Find the end of the language identifier line if it exists
+            if content[start_idx:].find("\n") >= 0:
+                start_idx = start_idx + content[start_idx:].find("\n") + 1
+            end_idx = content.rfind("```")
+            if start_idx < end_idx:
+                content = content[start_idx:end_idx].strip()
+
         try:
             # Parse the response content as JSON
             return json.loads(content)
-        except json.JSONDecodeError:
-            raise ValueError(f"Invalid JSON response from OpenAI API: {content}")
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON response from OpenAI API: {content}\nError: {str(e)}")
