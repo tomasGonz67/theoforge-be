@@ -6,7 +6,7 @@ from jose import JWTError
 from jose import JWTError
 
 
-from app.database import Database
+from app.database import Database, Neo4jService
 from app.operations.jwt_service import decode_token
 from settings.config import settings
 
@@ -60,3 +60,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 def get_settings():
     """Return application settings."""
     return settings
+
+def get_relevant_context(query_embedding):
+    query = """
+    MATCH (n:Document)
+    WITH n, gds.similarity.cosine(n.embedding, $queryEmbedding) AS similarity
+    ORDER BY similarity DESC
+    LIMIT 5
+    RETURN n.text AS context
+    """
+    results = Neo4jService.execute_query(query, {"queryEmbedding": query_embedding})
+    return " ".join([record["context"] for record in results])
