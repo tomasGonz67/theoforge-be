@@ -6,7 +6,7 @@ import os
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import Base, Database, DbService, Neo4jDatabase, Neo4jService
-from app.routers import auth, guest, resource, neo4j
+from app.routers import auth, guest, resource, neo4j, llm
 
 # Get database URL from environment variable
 database_url = os.getenv("DATABASE_URL")
@@ -52,6 +52,7 @@ app.include_router(auth.router)
 app.include_router(guest.router)
 app.include_router(resource.router)
 app.include_router(neo4j.router)
+app.include_router(llm.router)
 
 @app.get("/")
 async def root():
