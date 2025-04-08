@@ -37,6 +37,18 @@ jobs:
       run: |
         if [[ $GITHUB_REF == 'refs/heads/dev' ]]; then
           echo "IMAGE_TAG=dev" >> $GITHUB_ENV
+          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER_dev }}" >> $GITHUB_ENV
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD_dev }}" >> $GITHUB_ENV
+          echo "POSTGRES_PORT=${{ secrets.POSTGRES_PORT_dev }}" >> $GITHUB_ENV
+          echo "PGADMIN_DEFAULT_EMAIL=${{ secrets.PGADMIN_DEFAULT_EMAIL_dev }}" >> $GITHUB_ENV
+          echo "PGADMIN_DEFAULT_PASSWORD=${{ secrets.PGADMIN_DEFAULT_PASSWORD_dev }}" >> $GITHUB_ENV
+          echo "PGADMIN_PORT=${{ secrets.PGADMIN_PORT_dev }}" >> $GITHUB_ENV
+          echo "NEO4J_USER=${{ secrets.NEO4J_USER_dev }}" >> $GITHUB_ENV
+          echo "NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD_dev }}" >> $GITHUB_ENV
+          echo "NEO4J_HTTP_PORT=${{ secrets.NEO4J_HTTP_PORT_dev }}" >> $GITHUB_ENV
+          echo "NEO4J_BOLT_PORT=${{ secrets.NEO4J_BOLT_PORT_dev }}" >> $GITHUB_ENV
+          echo "API_PORT=${{ secrets.API_PORT_dev }}" >> $GITHUB_ENV
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL_dev }}" >> $GITHUB_ENV
         elif [[ $GITHUB_REF == 'refs/heads/qa' ]]; then
           echo "IMAGE_TAG=qa" >> $GITHUB_ENV
         elif [[ $GITHUB_REF == 'refs/heads/main' ]]; then
@@ -49,3 +61,16 @@ jobs:
         context: .  # Use the current directory as the build context
         push: true  # Push the image to Docker Hub after building
         tags: tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}  # Use the appropriate Docker image and tag
+        build-args: |
+          POSTGRES_USER=${{ POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ POSTGRES_PASSWORD }}
+          POSTGRES_PORT=${{ POSTGRES_PORT }}
+          PGADMIN_DEFAULT_EMAIL=${{ PGADMIN_DEFAULT_EMAIL}}
+          PGADMIN_DEFAULT_PASSWORD=${{ PGADMIN_DEFAULT_PASSWORD }}
+          PGADMIN_PORT=${{ PGADMIN_PORT }}
+          NEO4J_USER=${{ NEO4J_USER }}
+          NEO4J_PASSWORD=${{ NEO4J_PASSWORD }}
+          NEO4J_HTTP_PORT=${{ NEO4J_HTTP_PORT }}
+          NEO4J_BOLT_PORT=${{ NEO4J_BOLT_PORT }}
+          API_PORT=${{ API_PORT }}
+          DATABASE_URL=${{ DATABASE_URL }}
