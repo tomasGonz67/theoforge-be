@@ -57,7 +57,7 @@ app.include_router(guest.router)
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World test dis mofo one more time"}
+    return {"message": "Hello World. WE TESTING AGAIN"}
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
