@@ -42,7 +42,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./app ./app
 COPY ./alembic ./alembic
 COPY ./alembic.ini .
-COPY ./entrypoint.sh .
+COPY ./entrypoint.sh /app/entrypoint.sh
 
 #Make the entrypoint script executable
 RUN chmod +x /app/entrypoint.sh
