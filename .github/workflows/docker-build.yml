@@ -37,23 +37,36 @@ jobs:
       run: |
         if [[ $GITHUB_REF == 'refs/heads/dev' ]]; then
           echo "IMAGE_TAG=dev" >> $GITHUB_ENV
-          echo "POSTGRES_USER=${{ secrets.POSTGRES_USER_dev }}" >> $GITHUB_ENV
-          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD_dev }}" >> $GITHUB_ENV
-          echo "POSTGRES_PORT=${{ secrets.POSTGRES_PORT_dev }}" >> $GITHUB_ENV
-          echo "PGADMIN_DEFAULT_EMAIL=${{ secrets.PGADMIN_DEFAULT_EMAIL_dev }}" >> $GITHUB_ENV
-          echo "PGADMIN_DEFAULT_PASSWORD=${{ secrets.PGADMIN_DEFAULT_PASSWORD_dev }}" >> $GITHUB_ENV
-          echo "PGADMIN_PORT=${{ secrets.PGADMIN_PORT_dev }}" >> $GITHUB_ENV
-          echo "NEO4J_USER=${{ secrets.NEO4J_USER_dev }}" >> $GITHUB_ENV
-          echo "NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD_dev }}" >> $GITHUB_ENV
-          echo "NEO4J_HTTP_PORT=${{ secrets.NEO4J_HTTP_PORT_dev }}" >> $GITHUB_ENV
-          echo "NEO4J_BOLT_PORT=${{ secrets.NEO4J_BOLT_PORT_dev }}" >> $GITHUB_ENV
-          echo "API_PORT=${{ secrets.API_PORT_dev }}" >> $GITHUB_ENV
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL_dev }}" >> $GITHUB_ENV
-        elif [[ $GITHUB_REF == 'refs/heads/qa' ]]; then
+          echo "POSTGRES_USER=$POSTGRES_USER" >> $GITHUB_ENV
+          echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> $GITHUB_ENV
+          echo "POSTGRES_PORT=$POSTGRES_PORT" >> $GITHUB_ENV
+          echo "PGADMIN_DEFAULT_EMAIL=$PGADMIN_DEFAULT_EMAIL" >> $GITHUB_ENV
+          echo "PGADMIN_DEFAULT_PASSWORD=$PGADMIN_DEFAULT_PASSWORD" >> $GITHUB_ENV
+          echo "PGADMIN_PORT=$PGADMIN_PORT" >> $GITHUB_ENV
+          echo "NEO4J_USER=$NEO4J_USER" >> $GITHUB_ENV
+          echo "NEO4J_PASSWORD=$NEO4J_PASSWORD" >> $GITHUB_ENV
+          echo "NEO4J_HTTP_PORT=$NEO4J_HTTP_PORT" >> $GITHUB_ENV
+          echo "NEO4J_BOLT_PORT=$NEO4J_BOLT_PORT" >> $GITHUB_ENV
+          echo "API_PORT=$API_PORT" >> $GITHUB_ENV
+          echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
+        elif [[ "$GITHUB_REF" == "refs/heads/qa" ]]; then
           echo "IMAGE_TAG=qa" >> $GITHUB_ENV
         elif [[ $GITHUB_REF == 'refs/heads/main' ]]; then
           echo "IMAGE_TAG=prod" >> $GITHUB_ENV
         fi
+      env:
+        POSTGRES_USER: ${{ secrets.POSTGRES_USER_dev }}
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD_dev }}
+        POSTGRES_PORT: ${{ secrets.POSTGRES_PORT_dev }}
+        PGADMIN_DEFAULT_EMAIL: ${{ secrets.PGADMIN_DEFAULT_EMAIL_dev }}
+        PGADMIN_DEFAULT_PASSWORD: ${{ secrets.PGADMIN_DEFAULT_PASSWORD_dev }}
+        PGADMIN_PORT: ${{ secrets.PGADMIN_PORT_dev }}
+        NEO4J_USER: ${{ secrets.NEO4J_USER_dev }}
+        NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD_dev }}
+        NEO4J_HTTP_PORT: ${{ secrets.NEO4J_HTTP_PORT_dev }}
+        NEO4J_BOLT_PORT: ${{ secrets.NEO4J_BOLT_PORT_dev }}
+        API_PORT: ${{ secrets.API_PORT_dev }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL_dev }}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v2
@@ -62,15 +75,15 @@ jobs:
         push: true  # Push the image to Docker Hub after building
         tags: tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}  # Use the appropriate Docker image and tag
         build-args: |
-          POSTGRES_USER=${{ POSTGRES_USER }}
-          POSTGRES_PASSWORD=${{ POSTGRES_PASSWORD }}
-          POSTGRES_PORT=${{ POSTGRES_PORT }}
-          PGADMIN_DEFAULT_EMAIL=${{ PGADMIN_DEFAULT_EMAIL}}
-          PGADMIN_DEFAULT_PASSWORD=${{ PGADMIN_DEFAULT_PASSWORD }}
-          PGADMIN_PORT=${{ PGADMIN_PORT }}
-          NEO4J_USER=${{ NEO4J_USER }}
-          NEO4J_PASSWORD=${{ NEO4J_PASSWORD }}
-          NEO4J_HTTP_PORT=${{ NEO4J_HTTP_PORT }}
-          NEO4J_BOLT_PORT=${{ NEO4J_BOLT_PORT }}
-          API_PORT=${{ API_PORT }}
-          DATABASE_URL=${{ DATABASE_URL }}
+          POSTGRES_USER=${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_PORT=${{ env.POSTGRES_PORT }}
+          PGADMIN_DEFAULT_EMAIL=${{ env.PGADMIN_DEFAULT_EMAIL }}
+          PGADMIN_DEFAULT_PASSWORD=${{ env.PGADMIN_DEFAULT_PASSWORD }}
+          PGADMIN_PORT=${{ env.PGADMIN_PORT }}
+          NEO4J_USER=${{ env.NEO4J_USER }}
+          NEO4J_PASSWORD=${{ env.NEO4J_PASSWORD }}
+          NEO4J_HTTP_PORT=${{ env.NEO4J_HTTP_PORT }}
+          NEO4J_BOLT_PORT=${{ env.NEO4J_BOLT_PORT }}
+          API_PORT=${{ env.API_PORT }}
+          DATABASE_URL=${{ env.DATABASE_URL }}
