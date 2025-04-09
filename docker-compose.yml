@@ -4,7 +4,7 @@ services:
   postgres:
     image: postgres:16.2
     environment:
-      POSTGRES_DB: theoforge_dev
+      POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
@@ -54,8 +54,8 @@ services:
       retries: 5
 
   theoForgeAPI:
-    image: tgonz67/theoforge-backend:dev
-    container_name: theoForgeDevAPI
+    image: ${DOCKER_IMAGE}
+    container_name: ${CONTAINER_NAME}
     pull_policy: always
     restart: always
     volumes:

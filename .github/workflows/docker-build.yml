@@ -37,6 +37,7 @@ jobs:
       run: |
         if [[ $GITHUB_REF == 'refs/heads/dev' ]]; then
           echo "IMAGE_TAG=dev" >> $GITHUB_ENV
+          echo "POSTGRES_DB=$POSTGRES_DB" >> $GITHUB_ENV
           echo "POSTGRES_USER=$POSTGRES_USER" >> $GITHUB_ENV
           echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> $GITHUB_ENV
           echo "POSTGRES_PORT=$POSTGRES_PORT" >> $GITHUB_ENV
@@ -47,6 +48,8 @@ jobs:
           echo "NEO4J_PASSWORD=$NEO4J_PASSWORD" >> $GITHUB_ENV
           echo "NEO4J_HTTP_PORT=$NEO4J_HTTP_PORT" >> $GITHUB_ENV
           echo "NEO4J_BOLT_PORT=$NEO4J_BOLT_PORT" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE=$DOCKER_IMAGE" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
           echo "API_PORT=$API_PORT" >> $GITHUB_ENV
           echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
         elif [[ "$GITHUB_REF" == "refs/heads/qa" ]]; then
@@ -55,6 +58,7 @@ jobs:
           echo "IMAGE_TAG=prod" >> $GITHUB_ENV
         fi
       env:
+        POSTGRES_DB: ${{ secrets.POSTGRES_DB_dev }}
         POSTGRES_USER: ${{ secrets.POSTGRES_USER_dev }}
         POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD_dev }}
         POSTGRES_PORT: ${{ secrets.POSTGRES_PORT_dev }}
@@ -65,6 +69,8 @@ jobs:
         NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD_dev }}
         NEO4J_HTTP_PORT: ${{ secrets.NEO4J_HTTP_PORT_dev }}
         NEO4J_BOLT_PORT: ${{ secrets.NEO4J_BOLT_PORT_dev }}
+        DOCKER_IMAGE: ${{ secrets.DOCKER_IMAGE_dev }}
+        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME_dev }}
         API_PORT: ${{ secrets.API_PORT_dev }}
         DATABASE_URL: ${{ secrets.DATABASE_URL_dev }}
 
@@ -75,6 +81,7 @@ jobs:
         push: true  # Push the image to Docker Hub after building
         tags: tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}  # Use the appropriate Docker image and tag
         build-args: |
+          POSTGRES_DB=${{ env.POSTGRES_DB }}
           POSTGRES_USER=${{ env.POSTGRES_USER }}
           POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }}
           POSTGRES_PORT=${{ env.POSTGRES_PORT }}
@@ -85,5 +92,7 @@ jobs:
           NEO4J_PASSWORD=${{ env.NEO4J_PASSWORD }}
           NEO4J_HTTP_PORT=${{ env.NEO4J_HTTP_PORT }}
           NEO4J_BOLT_PORT=${{ env.NEO4J_BOLT_PORT }}
+          DOCKER_IMAGE=${{ env.DOCKER_IMAGE }}
+          CONTAINER_NAME=${{ env.CONTAINER_NAME }}
           API_PORT=${{ env.API_PORT }}
           DATABASE_URL=${{ env.DATABASE_URL }}
