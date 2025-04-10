@@ -1,107 +1,98 @@
-version: '3.8'
+name: Docker Build for Different Environments
 
-services:
-  postgres:
-    image: postgres:16.2
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_PORT}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d theoforge_dev"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app-network
+on:
+  push:
+    branches:
+      - dev
+      - qa
+      - main  # Assuming 'main' is used for prod
 
-  pgadmin:
-    image: dpage/pgadmin4
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-      PGADMIN_LISTEN_PORT: 80
-    ports:
-      - "${PGADMIN_PORT}:80"
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - app-network
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-  neo4j:
-    image: neo4j:5.18.0
-    environment:
-      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
-      NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
-    ports:
-      - "${NEO4J_HTTP_PORT}:7474" # HTTP
-      - "${NEO4J_BOLT_PORT}:7687"  # Bolt protocol
-    volumes:
-      - neo4j-data:/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-  theoForgeAPI:
-    image: ${DOCKER_IMAGE}
-    container_name: ${CONTAINER_NAME}
-    pull_policy: always
-    restart: always
-    volumes:
-      - ./alembic:/app/alembic
-      - ./tests:/app/tests
-      - ./settings:/app/settings
-      - ./alembic.ini:/app/alembic.ini
-      - ./pytest.ini:/app/pytest.ini
-      - ./requirements.txt:/app/requirements.txt
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-       - traefik
-       - backend
-       - app-network
-    ports:
-      - "${API_PORT}:8000"
-    labels:
-      - com.centurylinklabs.watchtower.enable=true
-      - traefik.enable=true
-      - traefik.docker.network=traefik
-      - traefik.http.routers.api.rule=(Host(`dev.theoforge.com`) || Host(`www.dev.theoforge.com`)) && PathPrefix(`/API`)
-      - traefik.http.routers.api.entrypoints=https
-      - traefik.http.routers.api.tls=true
-      - traefik.http.routers.api.tls.certresolver=simple-resolver
-      - traefik.http.middlewares.api-strip.stripprefix.prefixes=/API
-      - traefik.http.routers.api.middlewares=api-strip
-      - traefik.http.services.api.loadbalancer.server.port=8000
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - PYTHONPATH=/app
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USER=${NEO4J_USER}
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-volumes:
-  postgres-data:
-  pgadmin-data:
-  neo4j-data:
+    - name: Cache Docker layers
+      uses: actions/cache@v3
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
 
-networks:
-  app-network:
-    driver: bridge
-  traefik:
-      name: traefik
-      external: true
-  backend:
-      external: true
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Set Docker image tag based on branch
+      id: set_tag
+      run: |
+        if [[ $GITHUB_REF == 'refs/heads/dev' ]]; then
+          echo "IMAGE_TAG=dev" >> $GITHUB_ENV
+          echo "ENV_SUFFIX=_DEV" >> $GITHUB_ENV
+        elif [[ "$GITHUB_REF" == "refs/heads/qa" ]]; then
+          echo "IMAGE_TAG=qa" >> $GITHUB_ENV
+          echo "ENV_SUFFIX=_QA" >> $GITHUB_ENV
+        elif [[ $GITHUB_REF == 'refs/heads/main' ]]; then
+          echo "IMAGE_TAG=prod" >> $GITHUB_ENV
+          echo "ENV_SUFFIX=_PROD" >> $GITHUB_ENV
+        fi
+
+    - name: Build and push Docker image (without secrets)
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        push: true
+        tags: tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new
+
+    # Move cache
+    - name: Move cache
+      run: |
+        rm -rf /tmp/.buildx-cache
+        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+    # Create .env file to use with docker-compose on remote server
+    - name: Create environment file
+      run: |
+        cat > .env << EOL
+        # Automatically determined tag
+        IMAGE_TAG=${{ env.IMAGE_TAG }}
+        
+        # Environment variables from secrets
+        POSTGRES_DB=${{ secrets[format('POSTGRES_DB{0}', env.ENV_SUFFIX)] }}
+        POSTGRES_USER=${{ secrets[format('POSTGRES_USER{0}', env.ENV_SUFFIX)] }}
+        POSTGRES_PASSWORD=${{ secrets[format('POSTGRES_PASSWORD{0}', env.ENV_SUFFIX)] }}
+        POSTGRES_PORT=${{ secrets[format('POSTGRES_PORT{0}', env.ENV_SUFFIX)] }}
+        PGADMIN_DEFAULT_EMAIL=${{ secrets[format('PGADMIN_DEFAULT_EMAIL{0}', env.ENV_SUFFIX)] }}
+        PGADMIN_DEFAULT_PASSWORD=${{ secrets[format('PGADMIN_DEFAULT_PASSWORD{0}', env.ENV_SUFFIX)] }}
+        PGADMIN_PORT=${{ secrets[format('PGADMIN_PORT{0}', env.ENV_SUFFIX)] }}
+        NEO4J_USER=${{ secrets[format('NEO4J_USER{0}', env.ENV_SUFFIX)] }}
+        NEO4J_PASSWORD=${{ secrets[format('NEO4J_PASSWORD{0}', env.ENV_SUFFIX)] }}
+        NEO4J_HTTP_PORT=${{ secrets[format('NEO4J_HTTP_PORT{0}', env.ENV_SUFFIX)] }}
+        NEO4J_BOLT_PORT=${{ secrets[format('NEO4J_BOLT_PORT{0}', env.ENV_SUFFIX)] }}
+        DOCKER_IMAGE=tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}
+        CONTAINER_NAME=${{ secrets[format('CONTAINER_NAME{0}', env.ENV_SUFFIX)] }}
+        API_PORT=${{ secrets[format('API_PORT{0}', env.ENV_SUFFIX)] }}
+        DATABASE_URL=${{ secrets[format('DATABASE_URL{0}', env.ENV_SUFFIX)] }}
+        EOL
+
+    # Deploy to server with SSH
+    - name: Deploy to server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets[format('SERVER_HOST{0}', env.ENV_SUFFIX)] }}
+        username: ${{ secrets[format('SERVER_USER{0}', env.ENV_SUFFIX)] }}
+        key: ${{ secrets[format('SSH_PRIVATE_KEY{0}', env.ENV_SUFFIX)] }}
+        script: |
+          cd /path/to/deployment
+          docker pull tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}
