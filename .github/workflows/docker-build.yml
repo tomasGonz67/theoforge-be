@@ -58,21 +58,21 @@ jobs:
           echo "IMAGE_TAG=prod" >> $GITHUB_ENV
         fi
       env:
-        POSTGRES_DB: ${{ secrets.POSTGRES_DB_dev }}
-        POSTGRES_USER: ${{ secrets.POSTGRES_USER_dev }}
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD_dev }}
-        POSTGRES_PORT: ${{ secrets.POSTGRES_PORT_dev }}
-        PGADMIN_DEFAULT_EMAIL: ${{ secrets.PGADMIN_DEFAULT_EMAIL_dev }}
-        PGADMIN_DEFAULT_PASSWORD: ${{ secrets.PGADMIN_DEFAULT_PASSWORD_dev }}
-        PGADMIN_PORT: ${{ secrets.PGADMIN_PORT_dev }}
-        NEO4J_USER: ${{ secrets.NEO4J_USER_dev }}
-        NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD_dev }}
-        NEO4J_HTTP_PORT: ${{ secrets.NEO4J_HTTP_PORT_dev }}
-        NEO4J_BOLT_PORT: ${{ secrets.NEO4J_BOLT_PORT_dev }}
-        DOCKER_IMAGE: ${{ secrets.DOCKER_IMAGE_dev }}
-        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME_dev }}
-        API_PORT: ${{ secrets.API_PORT_dev }}
-        DATABASE_URL: ${{ secrets.DATABASE_URL_dev }}
+        POSTGRES_DB: ${{ secrets.POSTGRES_DB_DEV }}
+        POSTGRES_USER: ${{ secrets.POSTGRES_USER_DEV }}
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD_DEV }}
+        POSTGRES_PORT: ${{ secrets.POSTGRES_PORT_DEV }}
+        PGADMIN_DEFAULT_EMAIL: ${{ secrets.PGADMIN_DEFAULT_EMAIL_DEV }}
+        PGADMIN_DEFAULT_PASSWORD: ${{ secrets.PGADMIN_DEFAULT_PASSWORD_DEV }}
+        PGADMIN_PORT: ${{ secrets.PGADMIN_PORT_DEV }}
+        NEO4J_USER: ${{ secrets.NEO4J_USER_DEV }}
+        NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD_DEV }}
+        NEO4J_HTTP_PORT: ${{ secrets.NEO4J_HTTP_PORT_DEV }}
+        NEO4J_BOLT_PORT: ${{ secrets.NEO4J_BOLT_PORT_DEV }}
+        DOCKER_IMAGE: ${{ secrets.DOCKER_IMAGE_DEV }}
+        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME_DEV }}
+        API_PORT: ${{ secrets.API_PORT_DEV }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL_DEV }}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v2
