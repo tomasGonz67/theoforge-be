@@ -4,7 +4,8 @@ from typing import List, Dict, Any, Optional
 class EntitySchema(BaseModel):
     text: str
     label: Optional[str] = 'Entity' # Default label if not provided
-    embedding: Optional[List[float]] = None # Add optional embedding field
+    # embedding: Optional[List[float]] = None # Removed - handled separately
+    attributes: Optional[str] = None # Add optional field for serialized attributes
 
 class RelationshipSchema(BaseModel):
     subject: str

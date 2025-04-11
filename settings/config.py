@@ -13,4 +13,13 @@ class Settings(BaseSettings):
     # Email verification configuration
     require_email_verification: bool = Field(default=False)  # Set to False by default
 
+    # Qdrant configuration
+    qdrant_url: str = Field(default="http://qdrant:6333", description="URL for the Qdrant service")
+    qdrant_collection: str = Field(default="theoforge_vectors", description="Name of the Qdrant collection")
+    vector_dimension: int = Field(default=1536, description="Dimension of the vectors used for embeddings")
+
+    class Config:
+        env_file = '.env'
+        env_file_encoding = 'utf-8'
+
 settings = Settings()

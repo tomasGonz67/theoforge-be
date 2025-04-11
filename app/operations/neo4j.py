@@ -16,55 +16,55 @@ class Neo4jKnowledgeGraphLoader:
         
         # Generate parameterized queries for entities
         for entity in knowledge_elements.get("entities", []):
-            # Map input keys (expecting simple keys based on latest logs) and sanitize label
-            entity_text = entity.get('name', '') # Use 'name'
-            entity_type = entity.get('type', 'Entity') # Use 'type'
-            label = ''.join(filter(lambda x: x.isalnum() or x == '_', entity_type.replace(' ', '_')))
+            # Use the new keys: 'text', 'label', 'attributes', 'embedding'
+            entity_text = entity.get('text', '')
+            entity_label_raw = entity.get('label', 'Entity')
+            # Sanitize label
+            label = ''.join(filter(lambda x: x.isalnum() or x == '_', entity_label_raw.replace(' ', '_')))
             if not label: label = 'Entity' # Default label
 
             # Skip creating entity if text is empty
             if not entity_text:
-                logger.warning(f"Skipping entity creation due to empty name: {entity}")
+                logger.warning(f"Skipping entity creation due to empty text: {entity}")
                 continue
             # Base query and params - Add :Document label alongside specific label
             query = f"MERGE (e:Document:{label} {{text: $text}})"
             params = {"text": entity_text}
 
-            # Add embedding if present
-            embedding = entity.get('embedding')
-            if embedding is not None:
-                # Use ON CREATE SET / ON MATCH SET to add/update the embedding
-                query += " ON CREATE SET e.embedding = $embedding"
-                query += " ON MATCH SET e.embedding = $embedding"
-                params["embedding"] = embedding
+            # Add attributes string if present
+            attributes = entity.get('attributes') # This should be a JSON string or None
+            if attributes is not None:
+                query += " ON CREATE SET e.attributes = $attributes"
+                query += " ON MATCH SET e.attributes = $attributes"
+                params["attributes"] = attributes
 
             parameterized_queries.append((query, params))
         
         # Generate parameterized queries for relationships
-        # Create a mapping from entity name (text) to its primary label (type), using correct keys
-        entities_dict = {e.get('name', ''): ''.join(filter(lambda x: x.isalnum() or x == '_', e.get('type', 'Entity').replace(' ', '_'))) or 'Entity'
-                         for e in knowledge_elements.get("entities", [])}
+        # Create a mapping from entity text to its primary label, using new keys
+        entities_dict = {e.get('text', ''): ''.join(filter(lambda x: x.isalnum() or x == '_', e.get('label', 'Entity').replace(' ', '_'))) or 'Entity'
+                         for e in knowledge_elements.get("entities", []) if e.get('text')}
 
         for relationship in knowledge_elements.get("relationships", []):
-            # Map input keys (expecting simple keys based on latest logs)
-            subject_text = relationship.get('source', '') # Use 'source'
-            object_text = relationship.get('target', '') # Use 'target'
-            predicate_raw = relationship.get('relationship', 'RELATED_TO') # Use 'relationship'
+            # Use the new keys: 'subject', 'predicate', 'object'
+            subject_text = relationship.get('subject', '')
+            object_text = relationship.get('object', '')
+            predicate_raw = relationship.get('predicate', 'RELATED_TO')
 
             # Skip creating relationship if subject or object text is empty
             if not subject_text or not object_text:
-                logger.warning(f"Skipping relationship creation due to empty source/target: {relationship}")
+                logger.warning(f"Skipping relationship creation due to empty subject/object: {relationship}")
                 continue
-            # Get labels from our pre-computed dict and sanitize predicate
-            subject_label_raw = entities_dict.get(subject_text, 'Entity') # Use mapped label
-            object_label_raw = entities_dict.get(object_text, 'Entity') # Use mapped label
+            # Get labels from our pre-computed dict
+            subject_label_raw = entities_dict.get(subject_text, 'Entity')
+            object_label_raw = entities_dict.get(object_text, 'Entity')
 
             # Use the already sanitized labels from the entities_dict
             subject_label = subject_label_raw
             object_label = object_label_raw
+            # Sanitize predicate
             predicate = ''.join(filter(lambda x: x.isalnum() or x == '_', predicate_raw.upper().replace(' ', '_')))
             if not predicate: predicate = 'RELATED_TO'
-
 
             query = f"""
             MATCH (subject:Document:{subject_label} {{text: $subject_text}})
