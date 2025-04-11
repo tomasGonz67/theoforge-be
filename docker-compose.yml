@@ -1,98 +1,86 @@
-name: Docker Build for Different Environments
+version: '3.8'
 
-on:
-  push:
-    branches:
-      - dev
-      - qa
-      - main  # Assuming 'main' is used for prod
+services:
+  postgres:
+    image: postgres:16.2
+    environment:
+      POSTGRES_DB: theoforge_dev
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d theoforge_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: adminpassword
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+  theoForgeAPI:
+    image: tgonz67/theoforge-backend:dev
+    container_name: theoForgeDevAPI
+    pull_policy: always
+    restart: always
+    volumes:
+      - ./alembic:/app/alembic
+      - ./tests:/app/tests
+      - ./settings:/app/settings
+      - ./alembic.ini:/app/alembic.ini
+      - ./pytest.ini:/app/pytest.ini
+      - ./requirements.txt:/app/requirements.txt
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+       - traefik
+       - backend
+       - app-network
+    ports:
+      - "8003:8000"
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+      - traefik.enable=true
+      - traefik.docker.network=traefik
+      - traefik.http.routers.api.rule=(Host(`dev.theoforge.com`) || Host(`www.dev.theoforge.com`)) && PathPrefix(`/API`)
+      - traefik.http.routers.api.entrypoints=https
+      - traefik.http.routers.api.tls=true
+      - traefik.http.routers.api.tls.certresolver=simple-resolver
+      - traefik.http.middlewares.api-strip.stripprefix.prefixes=/API
+      - traefik.http.routers.api.middlewares=api-strip
+      - traefik.http.services.api.loadbalancer.server.port=8000
 
-    - name: Cache Docker layers
-      uses: actions/cache@v3
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@postgres:5432/theoforge_dev
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+volumes:
+  postgres-data:
+  pgadmin-data:
 
-    - name: Set Docker image tag based on branch
-      id: set_tag
-      run: |
-        if [[ $GITHUB_REF == 'refs/heads/dev' ]]; then
-          echo "IMAGE_TAG=dev" >> $GITHUB_ENV
-          echo "ENV_SUFFIX=_DEV" >> $GITHUB_ENV
-        elif [[ "$GITHUB_REF" == "refs/heads/qa" ]]; then
-          echo "IMAGE_TAG=qa" >> $GITHUB_ENV
-          echo "ENV_SUFFIX=_QA" >> $GITHUB_ENV
-        elif [[ $GITHUB_REF == 'refs/heads/main' ]]; then
-          echo "IMAGE_TAG=prod" >> $GITHUB_ENV
-          echo "ENV_SUFFIX=_PROD" >> $GITHUB_ENV
-        fi
-
-    - name: Build and push Docker image (without secrets)
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        push: true
-        tags: tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}
-        cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache-new
-
-    # Move cache
-    - name: Move cache
-      run: |
-        rm -rf /tmp/.buildx-cache
-        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-    # Create .env file to use with docker-compose on remote server
-    - name: Create environment file
-      run: |
-        cat > .env << EOL
-        # Automatically determined tag
-        IMAGE_TAG=${{ env.IMAGE_TAG }}
-        
-        # Environment variables from secrets
-        POSTGRES_DB=${{ secrets[format('POSTGRES_DB{0}', env.ENV_SUFFIX)] }}
-        POSTGRES_USER=${{ secrets[format('POSTGRES_USER{0}', env.ENV_SUFFIX)] }}
-        POSTGRES_PASSWORD=${{ secrets[format('POSTGRES_PASSWORD{0}', env.ENV_SUFFIX)] }}
-        POSTGRES_PORT=${{ secrets[format('POSTGRES_PORT{0}', env.ENV_SUFFIX)] }}
-        PGADMIN_DEFAULT_EMAIL=${{ secrets[format('PGADMIN_DEFAULT_EMAIL{0}', env.ENV_SUFFIX)] }}
-        PGADMIN_DEFAULT_PASSWORD=${{ secrets[format('PGADMIN_DEFAULT_PASSWORD{0}', env.ENV_SUFFIX)] }}
-        PGADMIN_PORT=${{ secrets[format('PGADMIN_PORT{0}', env.ENV_SUFFIX)] }}
-        NEO4J_USER=${{ secrets[format('NEO4J_USER{0}', env.ENV_SUFFIX)] }}
-        NEO4J_PASSWORD=${{ secrets[format('NEO4J_PASSWORD{0}', env.ENV_SUFFIX)] }}
-        NEO4J_HTTP_PORT=${{ secrets[format('NEO4J_HTTP_PORT{0}', env.ENV_SUFFIX)] }}
-        NEO4J_BOLT_PORT=${{ secrets[format('NEO4J_BOLT_PORT{0}', env.ENV_SUFFIX)] }}
-        DOCKER_IMAGE=tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}
-        CONTAINER_NAME=${{ secrets[format('CONTAINER_NAME{0}', env.ENV_SUFFIX)] }}
-        API_PORT=${{ secrets[format('API_PORT{0}', env.ENV_SUFFIX)] }}
-        DATABASE_URL=${{ secrets[format('DATABASE_URL{0}', env.ENV_SUFFIX)] }}
-        EOL
-
-    # Deploy to server with SSH
-    - name: Deploy to server
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets[format('SERVER_HOST{0}', env.ENV_SUFFIX)] }}
-        username: ${{ secrets[format('SERVER_USER{0}', env.ENV_SUFFIX)] }}
-        key: ${{ secrets[format('SSH_PRIVATE_KEY{0}', env.ENV_SUFFIX)] }}
-        script: |
-          cd /path/to/deployment
-          docker pull tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}
+networks:
+  app-network:
+    driver: bridge
+  traefik:
+      name: traefik
+      external: true
+  backend:
+      external: true
