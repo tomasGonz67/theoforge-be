@@ -35,7 +35,6 @@ reference/
 # Docker
 .docker/
 docker-volumes/
-Dockerfile
 docker-compose.yml
 # Database
 *.sqlite3
