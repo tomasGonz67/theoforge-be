@@ -4,10 +4,8 @@ import logging
 
 # Import from the sub-package within 'app'
 from app.text_to_cleaning.text_cleaning import TextCleaningService
-
 from app.operations.neo4j import Neo4jKnowledgeGraphLoader
-from app.database import get_db # If needed for other dependencies, though not directly used here
-from settings.config import settings # Corrected import path for settings
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
