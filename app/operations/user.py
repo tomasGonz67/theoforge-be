@@ -1,0 +1,164 @@
+from builtins import Exception, bool, classmethod, int, str
+from datetime import datetime
+from typing import Optional, List, Any
+from pydantic import ValidationError
+from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
+import logging
+
+from app.models.user import User, UserRole, SubscriptionPlan
+from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.core.security import hash_password, verify_password
+from settings.config import settings  
+from app.database import DbService
+from app.operations.jwt_service import decode_token
+
+logger = logging.getLogger(__name__)
+
+# Base repository for data access
+class UserRepository:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+    
+    async def get_by_id(self, user_id: UUID) -> Optional[User]:
+        """Get user by their ID."""
+        query = select(User).filter_by(id=user_id)
+        result = await DbService.execute_query(self.session, query)
+        return result.scalars().first() if result else None
+    
+    async def get_by_email(self, email: str) -> Optional[User]:
+        """Check if user exists with given email."""
+        query = select(User).filter_by(email=email)
+        result = await DbService.execute_query(self.session, query)
+        return result.scalars().first() if result else None
+    
+    async def get_by_nickname(self, nickname: str) -> Optional[User]:
+        """Check if user exists with given nickname."""
+        query = select(User).filter_by(nickname=nickname)
+        result = await DbService.execute_query(self.session, query)
+        return result.scalars().first() if result else None
+    
+    async def get_all_users(self) -> List[User]:
+        """Retrieve all users from the database."""
+        query = select(User)
+        result = await DbService.execute_query(self.session, query)
+        return result.scalars().all() if result else []
+
+    async def count(self) -> int:
+        """Count total number of users. Used to determine if first user (admin)."""
+        query = select(func.count()).select_from(User)
+        result = await DbService.execute_query(self.session, query)
+        return result.scalar()
+    
+    async def save(self, user: User) -> User:
+        """Save user to database."""
+        self.session.add(user)
+        await DbService.commit(self.session)
+        await self.session.refresh(user)
+        return user
+
+    async def delete(self, user: User) -> None:
+        """Delete a user."""
+        await self.session.delete(user)
+        await DbService.commit(self.session)
+
+# Registration service
+class RegistrationService:
+    def __init__(self, repository: UserRepository):
+        self.repository = repository
+    
+    async def register_user(self, user_data: dict) -> Optional[User]:
+        """Register a new user with the provided data."""
+        try:
+            # Validate user data
+            validated_data = UserCreate(**user_data).model_dump()
+            
+            # Check for existing user
+            existing_user = await self.repository.get_by_email(validated_data['email'])
+            if existing_user:
+                logger.error("User with given email already exists.")
+                raise ValueError(f"User with email {validated_data['email']} already exists")
+            
+            # Hash password and remove plain password
+            validated_data['hashed_password'] = hash_password(validated_data.pop('password'))
+            
+            # Check if this is the first user
+            user_count = await self.repository.count()
+            role = UserRole.ADMIN if user_count == 0 else UserRole.USER
+            
+            # Determine email verification status based on config and role
+            # Admin users are always verified regardless of config
+            is_admin = role == UserRole.ADMIN
+            email_verified = is_admin or not settings.require_email_verification
+            
+            # Create new user instance with determined role and verification
+            new_user = User(
+                **validated_data,
+                role=role,
+                email_verified=email_verified,  # Set based on config and role
+                subscription_plan=SubscriptionPlan.FREE,  # Default plan
+                phone_number=None,
+                address=None,
+                city=None,
+                state=None,
+                zip_code=None,
+                card_number=None,
+                ccv=None,
+                security_code=None
+            )
+            
+            return await self.repository.save(new_user)
+            
+        except ValidationError as e:
+            logger.error(f"Validation error during user creation: {e}")
+            return None
+
+# Authentication service
+class AuthenticationService:
+    def __init__(self, repository: UserRepository):
+        self.repository = repository
+    
+    async def login_user(self, email: str, password: str) -> Optional[User]:
+        """Authenticate a user by email and password."""
+        user = await self.repository.get_by_email(email)
+        if user:
+            # Only check email verification if it's required in settings
+            if settings.require_email_verification and not user.email_verified:
+                return None
+            
+            if user.is_locked:
+                return None
+                
+            if verify_password(password, user.hashed_password):
+                user.failed_login_attempts = 0
+                return user
+            else:
+                user.failed_login_attempts += 1
+                if user.failed_login_attempts >= settings.max_login_attempts:
+                    user.is_locked = True
+        return None
+
+# Profile Update service
+class ProfileUpdateService:
+    def __init__(self, repository: UserRepository):
+        self.repository = repository
+    
+    async def update_profile(self, user_id: UUID, user_data: dict) -> Optional[User]:
+        """Update user's profile details after registration."""
+        user = await self.repository.get_by_id(user_id)
+        if not user:
+            return None
+        
+        # Ensure subscription_plan is converted to a valid enum value
+        if "subscription_plan" in user_data and user_data["subscription_plan"]:
+            try:
+                user_data["subscription_plan"] = SubscriptionPlan[user_data["subscription_plan"].upper()]
+            except KeyError:
+                raise ValueError("Invalid subscription plan value")
+        
+        for key, value in user_data.items():
+            setattr(user, key, value)
+        
+        return await self.repository.save(user)

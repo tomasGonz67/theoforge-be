@@ -30,11 +30,12 @@ ENV/
 .vscode/
 *.swp
 *.swo
+reference/
 
 # Docker
 .docker/
 docker-volumes/
-
+docker-compose.yml
 # Database
 *.sqlite3
 postgres-data/
@@ -43,3 +44,6 @@ pgadmin-data/
 # Environment variables
 .env
 .env.local 
+
+# Fronend
+frontend/
