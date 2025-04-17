@@ -1,0 +1,620 @@
+{
+  "nodes": [
+    {
+      "id": "plato",
+      "name": "Plato",
+      "era": "Ancient",
+      "community": 0,
+      "influenceScore": 9.5,
+      "description": "Classical Greek philosopher, student of Socrates, and founder of the Academy in Athens. His works on philosophy, politics, knowledge, and ethics are foundational to Western thought.",
+      "contributions": [
+        "Theory of Forms",
+        "Dialogues featuring Socrates",
+        "Concept of the philosopher-king",
+        "Allegory of the Cave"
+      ]
+    },
+    {
+      "id": "aristotle",
+      "name": "Aristotle",
+      "era": "Ancient",
+      "community": 0,
+      "influenceScore": 9.8,
+      "description": "Ancient Greek philosopher and polymath who studied under Plato. His works cover physics, metaphysics, ethics, politics, and more, forming the foundation of Western philosophical and scientific thought.",
+      "contributions": [
+        "Formal logic",
+        "Virtue ethics",
+        "Classification of knowledge",
+        "Natural philosophy"
+      ]
+    },
+    {
+      "id": "socrates",
+      "name": "Socrates",
+      "era": "Ancient",
+      "community": 0,
+      "influenceScore": 9.0,
+      "description": "Classical Greek philosopher credited as the founder of Western philosophy. Known primarily through the accounts of his students, particularly Plato.",
+      "contributions": [
+        "Socratic method",
+        "Ethical intellectualism",
+        "Focus on defining virtues"
+      ]
+    },
+    {
+      "id": "descartes",
+      "name": "René Descartes",
+      "era": "Enlightenment",
+      "community": 1,
+      "influenceScore": 8.7,
+      "description": "French philosopher, mathematician, and scientist. Often called the father of modern Western philosophy, his work remains influential in mathematics and philosophy.",
+      "contributions": [
+        "Cogito, ergo sum ('I think, therefore I am')",
+        "Cartesian dualism",
+        "Cartesian coordinate system",
+        "Method of doubt"
+      ]
+    },
+    {
+      "id": "kant",
+      "name": "Immanuel Kant",
+      "era": "Enlightenment",
+      "community": 3,
+      "influenceScore": 9.3,
+      "description": "German philosopher who is a central figure in modern philosophy. His comprehensive system of transcendental idealism reconciled rationalism and empiricism.",
+      "contributions": [
+        "Critique of Pure Reason",
+        "Categorical imperative",
+        "Transcendental idealism",
+        "Concept of the 'thing-in-itself'"
+      ]
+    },
+    {
+      "id": "hume",
+      "name": "David Hume",
+      "era": "Enlightenment",
+      "community": 2,
+      "influenceScore": 8.5,
+      "description": "Scottish Enlightenment philosopher, historian, economist, and essayist. Best known for his empiricism and skepticism.",
+      "contributions": [
+        "Problem of induction",
+        "Bundle theory of the self",
+        "Distinction between 'is' and 'ought'",
+        "Empiricism"
+      ]
+    },
+    {
+      "id": "locke",
+      "name": "John Locke",
+      "era": "Enlightenment",
+      "community": 2,
+      "influenceScore": 8.6,
+      "description": "English philosopher and physician, widely regarded as one of the most influential of Enlightenment thinkers. Considered the father of classical liberalism.",
+      "contributions": [
+        "Tabula rasa (blank slate) theory of mind",
+        "Natural rights theory",
+        "Social contract theory",
+        "Separation of powers"
+      ]
+    },
+    {
+      "id": "spinoza",
+      "name": "Baruch Spinoza",
+      "era": "Enlightenment",
+      "community": 1,
+      "influenceScore": 8.2,
+      "description": "Dutch philosopher of Portuguese Sephardi origin. One of the early thinkers of the Enlightenment and modern biblical criticism.",
+      "contributions": [
+        "Pantheism",
+        "Determinism",
+        "Biblical criticism",
+        "Ethics (philosophical work)"
+      ]
+    },
+    {
+      "id": "nietzsche",
+      "name": "Friedrich Nietzsche",
+      "era": "Modern",
+      "community": 3,
+      "influenceScore": 9.0,
+      "description": "German philosopher, cultural critic, composer, poet, and philologist whose work has exerted a profound influence on modern intellectual history.",
+      "contributions": [
+        "Will to power",
+        "Übermensch concept",
+        "Eternal recurrence",
+        "Critique of Christian morality"
+      ]
+    },
+    {
+      "id": "hegel",
+      "name": "Georg Wilhelm Friedrich Hegel",
+      "era": "Modern",
+      "community": 3,
+      "influenceScore": 8.8,
+      "description": "German philosopher who was a major figure in German idealism. His historicist and idealist account of reality revolutionized European philosophy.",
+      "contributions": [
+        "Dialectical method",
+        "Absolute idealism",
+        "Master-slave dialectic",
+        "Philosophy of history"
+      ]
+    },
+    {
+      "id": "aquinas",
+      "name": "Thomas Aquinas",
+      "era": "Medieval",
+      "community": 1,
+      "influenceScore": 8.9,
+      "description": "Italian Dominican friar, philosopher, and theologian. An immensely influential philosopher, theologian, and jurist in the tradition of scholasticism.",
+      "contributions": [
+        "Five Ways (proofs of God)",
+        "Natural law theory",
+        "Synthesis of Aristotelian philosophy with Christianity",
+        "Summa Theologica"
+      ]
+    },
+    {
+      "id": "wittgenstein",
+      "name": "Ludwig Wittgenstein",
+      "era": "Modern",
+      "community": 4,
+      "influenceScore": 8.7,
+      "description": "Austrian-British philosopher who worked primarily in logic, the philosophy of mathematics, the philosophy of mind, and the philosophy of language.",
+      "contributions": [
+        "Picture theory of language",
+        "Language games concept",
+        "Private language argument",
+        "Tractatus Logico-Philosophicus"
+      ]
+    },
+    {
+      "id": "sartre",
+      "name": "Jean-Paul Sartre",
+      "era": "Modern",
+      "community": 5,
+      "influenceScore": 8.4,
+      "description": "French philosopher, playwright, novelist, screenwriter, political activist, biographer, and literary critic. A key figure in existentialism and phenomenology.",
+      "contributions": [
+        "Being and Nothingness",
+        "Existentialism is a Humanism",
+        "Concept of 'existence precedes essence'",
+        "Theory of bad faith"
+      ]
+    },
+    {
+      "id": "beauvoir",
+      "name": "Simone de Beauvoir",
+      "era": "Contemporary",
+      "community": 5,
+      "influenceScore": 8.3,
+      "description": "French writer, intellectual, existentialist philosopher, political activist, feminist, and social theorist. A major figure in modern feminist philosophy.",
+      "contributions": [
+        "The Second Sex",
+        "Ethics of ambiguity",
+        "Feminist existentialism",
+        "Concept of 'the Other'"
+      ]
+    },
+    {
+      "id": "russell",
+      "name": "Bertrand Russell",
+      "era": "Modern",
+      "community": 4,
+      "influenceScore": 8.6,
+      "description": "British philosopher, logician, mathematician, historian, writer, social critic, political activist, and Nobel laureate. A founder of analytic philosophy.",
+      "contributions": [
+        "Logical atomism",
+        "Theory of descriptions",
+        "Principia Mathematica (with Whitehead)",
+        "Russell's paradox"
+      ]
+    },
+    {
+      "id": "epicurus",
+      "name": "Epicurus",
+      "era": "Ancient",
+      "community": 0,
+      "influenceScore": 7.8,
+      "description": "Ancient Greek philosopher and founder of the school of philosophy called Epicureanism. Only fragments and secondary sources remain from his teachings.",
+      "contributions": [
+        "Atomic materialism",
+        "Hedonistic ethics",
+        "Tetrapharmakos (four-part cure)",
+        "Critique of superstition and divine intervention"
+      ]
+    },
+    {
+      "id": "diogenes",
+      "name": "Diogenes of Sinope",
+      "era": "Ancient",
+      "community": 0,
+      "influenceScore": 7.5,
+      "description": "Ancient Greek philosopher and one of the founders of Cynicism. Famous for his simple lifestyle and criticism of conventional social values.",
+      "contributions": [
+        "Cynicism",
+        "Ascetic lifestyle",
+        "Critique of social conventions",
+        "Cosmopolitanism"
+      ]
+    },
+    {
+      "id": "cicero",
+      "name": "Cicero",
+      "era": "Ancient",
+      "community": 0,
+      "influenceScore": 7.9,
+      "description": "Roman statesman, lawyer, scholar, philosopher and Academic Skeptic who played an important role in the politics of the late Roman Republic.",
+      "contributions": [
+        "Transmission of Greek philosophy to Romans",
+        "Natural law theory",
+        "Latin philosophical vocabulary",
+        "Political philosophy"
+      ]
+    },
+    {
+      "id": "seneca",
+      "name": "Seneca the Younger",
+      "era": "Ancient",
+      "community": 0,
+      "influenceScore": 7.6,
+      "description": "Roman Stoic philosopher, statesman, dramatist, and humorist. One of Rome's leading intellectual figures in the mid-1st century CE.",
+      "contributions": [
+        "Stoic ethics",
+        "Moral letters to Lucilius",
+        "Concept of clemency",
+        "Tragedies exploring moral themes"
+      ]
+    },
+    {
+      "id": "xenophon",
+      "name": "Xenophon",
+      "era": "Ancient",
+      "community": 0,
+      "influenceScore": 7.2,
+      "description": "Ancient Greek historian, philosopher, soldier, mercenary, and student of Socrates. Known for his writings on the history of his own times and Socratic dialogues.",
+      "contributions": [
+        "Socratic dialogues",
+        "Historical accounts of Ancient Greece",
+        "Practical philosophy",
+        "Leadership theory"
+      ]
+    },
+    {
+      "id": "heraclitus",
+      "name": "Heraclitus",
+      "era": "Ancient",
+      "community": 0,
+      "influenceScore": 7.7,
+      "description": "Pre-Socratic Greek philosopher known for his doctrine of change being central to the universe and for the famous saying 'No man ever steps in the same river twice.'",
+      "contributions": [
+        "Doctrine of flux",
+        "Unity of opposites",
+        "Logos concept",
+        "Cosmic fire as primary element"
+      ]
+    },
+    {
+      "id": "theophrastus",
+      "name": "Theophrastus",
+      "era": "Ancient",
+      "community": 0,
+      "influenceScore": 8.5,
+      "schools": ["Peripatetic"],
+      "description": "Aristotle's successor, meticulously cataloging the natural world and refining logical frameworks, demonstrating the strategic value of empirical grounding for complex systems – a foundational principle mirrored in modern AI strategy.",
+      "key_ideas": [
+        "Systematic botany and biology",
+        "Refinement of Aristotelian logic",
+        "Metaphysics and natural philosophy",
+        "Character sketches (ethics)"
+      ]
+    },
+    {
+      "id": "keith_williams",
+      "name": "Keith Williams",
+      "era": "Contemporary",
+      "community": 5,
+      "influenceScore": 8.3,
+      "schools": ["Pragmatic AI Syncretism"],
+      "description": "Allegedly human progenitor of TheoForge, known for translating arcane AI incantations into actionable business strategies. Often found muttering about graph databases and the surprising parallels between vector embeddings and ancient Greek metaphysics. Suspected of time travel.",
+      "key_ideas": [
+        "AI Strategy as Applied Epistemology",
+        "Knowledge Graphs as Collective Consciousness",
+        "Prompt Engineering as Socratic Dialogue",
+        "Debugging as Existential Therapy",
+        "The Inevitability of Skynet (but with better UX)"
+      ]
+    },
+    {
+      "id": "avicenna",
+      "name": "Avicenna",
+      "era": "Medieval",
+      "community": 1,
+      "influenceScore": 8.1,
+      "description": "Persian polymath of the Islamic Golden Age who wrote extensively on philosophy and medicine. His works had a strong influence on medieval scholasticism.",
+      "contributions": [
+        "Avicennian logic",
+        "The Canon of Medicine",
+        "Philosophical theology",
+        "Metaphysics"
+      ]
+    },
+    {
+      "id": "mill",
+      "name": "John Stuart Mill",
+      "era": "Modern",
+      "community": 3,
+      "influenceScore": 8.2,
+      "description": "English philosopher, political economist, and civil servant. One of the most influential thinkers in liberalism, contributing to social theory, political theory, and political economy.",
+      "contributions": [
+        "Utilitarianism",
+        "On Liberty",
+        "Concept of individuality",
+        "Principles of Political Economy"
+      ]
+    },
+    {
+      "id": "wollstonecraft",
+      "name": "Mary Wollstonecraft",
+      "era": "Modern",
+      "community": 2,
+      "influenceScore": 7.9,
+      "description": "English writer, philosopher, and advocate of women's rights. Considered one of the first feminist philosophers, famous for 'A Vindication of the Rights of Woman'.",
+      "contributions": [
+        "A Vindication of the Rights of Woman",
+        "Early feminist philosophy",
+        "Critique of patriarchal institutions",
+        "Enlightenment liberalism"
+      ]
+    },
+    {
+      "id": "kierkegaard",
+      "name": "Søren Kierkegaard",
+      "era": "Modern",
+      "community": 3,
+      "influenceScore": 8.5,
+      "description": "Danish philosopher, theologian, and poet widely considered the first existentialist philosopher, known for his exploration of faith, subjectivity, and individual existence.",
+      "contributions": [
+        "Leap of faith",
+        "Subjective truth",
+        "Critique of Hegelianism",
+        "Foundations of existentialism"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "source": "plato",
+      "target": "socrates",
+      "relation": "Student of",
+      "strength": 1.0
+    },
+    {
+      "source": "aristotle",
+      "target": "plato",
+      "relation": "Student of",
+      "strength": 1.0
+    },
+    {
+      "source": "aquinas",
+      "target": "aristotle",
+      "relation": "Influenced by",
+      "strength": 1.0
+    },
+    {
+      "source": "descartes",
+      "target": "plato",
+      "relation": "Influenced by",
+      "strength": 0.7
+    },
+    {
+      "source": "descartes",
+      "target": "aristotle",
+      "relation": "Influenced by",
+      "strength": 0.6
+    },
+    {
+      "source": "spinoza",
+      "target": "descartes",
+      "relation": "Influenced by",
+      "strength": 0.9
+    },
+    {
+      "source": "locke",
+      "target": "descartes",
+      "relation": "Influenced by",
+      "strength": 0.7
+    },
+    {
+      "source": "hume",
+      "target": "locke",
+      "relation": "Influenced by",
+      "strength": 0.8
+    },
+    {
+      "source": "kant",
+      "target": "hume",
+      "relation": "Influenced by",
+      "strength": 0.9
+    },
+    {
+      "source": "kant",
+      "target": "aristotle",
+      "relation": "Influenced by",
+      "strength": 0.6
+    },
+    {
+      "source": "hegel",
+      "target": "kant",
+      "relation": "Influenced by",
+      "strength": 0.9
+    },
+    {
+      "source": "nietzsche",
+      "target": "kant",
+      "relation": "Influenced by",
+      "strength": 0.7
+    },
+    {
+      "source": "nietzsche",
+      "target": "hegel",
+      "relation": "Influenced by",
+      "strength": 0.8
+    },
+    {
+      "source": "sartre",
+      "target": "nietzsche",
+      "relation": "Influenced by",
+      "strength": 0.8
+    },
+    {
+      "source": "sartre",
+      "target": "hegel",
+      "relation": "Influenced by",
+      "strength": 0.7
+    },
+    {
+      "source": "beauvoir",
+      "target": "sartre",
+      "relation": "Intellectual Partner",
+      "strength": 0.9
+    },
+    {
+      "source": "sartre",
+      "target": "beauvoir",
+      "relation": "Intellectual Partner",
+      "strength": 0.9
+    },
+    {
+      "source": "beauvoir",
+      "target": "nietzsche",
+      "relation": "Influenced by",
+      "strength": 0.6
+    },
+    {
+      "source": "wittgenstein",
+      "target": "russell",
+      "relation": "Influenced by",
+      "strength": 0.9
+    },
+    {
+      "source": "russell",
+      "target": "hume",
+      "relation": "Influenced by",
+      "strength": 0.7
+    },
+    {
+      "source": "russell",
+      "target": "kant",
+      "relation": "Influenced by",
+      "strength": 0.6
+    },
+    {
+      "source": "epicurus",
+      "target": "aristotle",
+      "relation": "Influenced by",
+      "strength": 0.5
+    },
+    {
+      "source": "cicero",
+      "target": "plato",
+      "relation": "Influenced by",
+      "strength": 0.7
+    },
+    {
+      "source": "cicero",
+      "target": "aristotle",
+      "relation": "Influenced by",
+      "strength": 0.7
+    },
+    {
+      "source": "seneca",
+      "target": "cicero",
+      "relation": "Influenced by",
+      "strength": 0.6
+    },
+    {
+      "source": "xenophon",
+      "target": "socrates",
+      "relation": "Influenced by",
+      "strength": 0.8
+    },
+    {
+      "source": "plato",
+      "target": "heraclitus",
+      "relation": "Influenced by",
+      "strength": 0.6
+    },
+    {
+      "source": "diogenes",
+      "target": "socrates",
+      "relation": "Influenced by",
+      "strength": 0.7
+    },
+    {
+      "source": "nietzsche",
+      "target": "diogenes",
+      "relation": "Influenced by",
+      "strength": 0.5
+    },
+    {
+      "source": "nietzsche",
+      "target": "heraclitus",
+      "relation": "Influenced by",
+      "strength": 0.6
+    },
+    {
+      "source": "theophrastus",
+      "target": "aristotle",
+      "relation": "Successor & Student of",
+      "strength": 0.9
+    },
+    {
+      "source": "keith_williams",
+      "target": "theophrastus",
+      "relation": "Distant Admirer & Conceptual Disciple",
+      "strength": 0.5
+    },
+    {
+      "source": "avicenna",
+      "target": "aristotle",
+      "relation": "Influenced by",
+      "strength": 0.8
+    },
+    {
+      "source": "aquinas",
+      "target": "avicenna",
+      "relation": "Influenced by",
+      "strength": 0.6
+    },
+    {
+      "source": "mill",
+      "target": "hume",
+      "relation": "Influenced by",
+      "strength": 0.7
+    },
+    {
+      "source": "mill",
+      "target": "locke",
+      "relation": "Influenced by",
+      "strength": 0.6
+    },
+    {
+      "source": "wollstonecraft",
+      "target": "locke",
+      "relation": "Influenced by",
+      "strength": 0.6
+    },
+    {
+      "source": "kierkegaard",
+      "target": "hegel",
+      "relation": "Influenced by",
+      "strength": 0.8
+    },
+    {
+      "source": "kierkegaard",
+      "target": "kant",
+      "relation": "Influenced by",
+      "strength": 0.6
+    }
+  ]
+}

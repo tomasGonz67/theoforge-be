@@ -1,10 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import FileResponse
 import os
+import json
+from typing import Optional
 
 from app.database import Neo4jDatabase, Neo4jService
 from app.operations.neo4j import Neo4jKnowledgeGraphLoader
+from app.operations.philosophers import PhilosophersGraphLoader
 from app.schemas.neo4j import KnowledgeGraphInput, KnowledgeGraphResponse, VerifyGraphResponse
+from app.schemas.philosophers import PhilosophersGraph, PhilosopherFilterParams
+
 # Router for Neo4j operations
 router = APIRouter(prefix="/neo4j", tags=["Neo4j"])
 
@@ -114,3 +119,94 @@ async def delete_all():
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+# Philosophers Knowledge Graph Endpoints
+
+@router.post("/philosophers/import")
+async def import_philosophers_json(data: PhilosophersGraph):
+    """
+    Import philosophers knowledge graph data from JSON.
+    
+    This endpoint accepts the complete philosophers graph JSON structure and imports it into Neo4j.
+    """
+    try:
+        result = PhilosophersGraphLoader.import_philosophers_from_json(data.model_dump())
+        
+        if result.get("status") == "error":
+            raise HTTPException(status_code=500, detail=result.get("message", "Failed to import philosophers data"))
+            
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to import philosophers data: {str(e)}")
+
+
+@router.post("/philosophers/import-file")
+async def import_philosophers_file(file_path: str):
+    """
+    Import philosophers knowledge graph data from a JSON file.
+    
+    This endpoint takes a file path to a JSON file containing the philosophers graph data.
+    """
+    try:
+        result = PhilosophersGraphLoader.import_philosophers_from_file(file_path)
+        
+        if result.get("status") == "error":
+            raise HTTPException(status_code=500, detail=result.get("message", "Failed to import philosophers data from file"))
+            
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to import philosophers from file: {str(e)}")
+
+
+@router.post("/philosophers/import-default")
+async def import_philosophers_default():
+    """
+    Import philosophers knowledge graph data from the default JSON file at public/data/philosophers.json.
+    
+    This endpoint requires no parameters and automatically imports from the predefined file.
+    """
+    try:
+        # Define the path to the default philosophers.json file
+        import os
+        from pathlib import Path
+        
+        # Look for the file in the app/data directory, which is mounted in the Docker container
+        file_path = os.path.join("app", "data", "philosophers.json")
+        # If running locally outside Docker
+        if not os.path.exists(file_path):
+            # Try with just the directory name
+            file_path = os.path.join("data", "philosophers.json")
+            
+        # Get absolute path for better error reporting
+        file_path = os.path.abspath(file_path)
+        
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail=f"Default philosophers file not found at {file_path}")
+        
+        result = PhilosophersGraphLoader.import_philosophers_from_file(file_path)
+        
+        if result.get("status") == "error":
+            raise HTTPException(status_code=500, detail=result.get("message", "Failed to import philosophers data"))
+            
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to import philosophers: {str(e)}")
+
+
+@router.get("/philosophers-graph", response_model=PhilosophersGraph)
+async def get_philosophers_graph():
+    """
+    Get the complete philosophers knowledge graph.
+    
+    Returns the full graph with nodes and links in the format expected by the frontend visualization.
+    """
+    try:
+        graph_data = PhilosophersGraphLoader.get_philosophers_graph()
+        
+        if graph_data is None:
+            raise HTTPException(status_code=500, detail="Failed to retrieve philosophers graph data")
+            
+        return graph_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve philosophers graph: {str(e)}")
