@@ -248,4 +248,3 @@ The codebase follows a structured organization:
 - **Routers**: API endpoints organized by feature
 - **Dependencies**: Shared dependencies for authentication and database access
 
-This structure separates concerns, making the codebase more maintainable and testable. 
