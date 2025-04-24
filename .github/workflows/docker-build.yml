@@ -49,4 +49,11 @@ jobs:
         context: .  # Use the current directory as the build context
         push: true  # Push the image to Docker Hub after building
         tags: tgonz67/theoforge-backend:${{ env.IMAGE_TAG }}  # Use the appropriate Docker image and tag
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
         
+    # Move cache to avoid growing it indefinitely
+    - name: Move cache
+      run: |
+        rm -rf /tmp/.buildx-cache
+        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
