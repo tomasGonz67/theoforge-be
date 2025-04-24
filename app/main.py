@@ -55,9 +55,9 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(guest.router)
 
-@app.get("/API/")
+@app.get("/")
 async def root():
-    return {"message":"HELLO MONKEYS!"}
+    return {"This is a test"}
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
