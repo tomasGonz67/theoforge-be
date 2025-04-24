@@ -8,6 +8,8 @@ import pkgutil
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from prometheus_fastapi_instrumentator import Instrumentator
+from fastapi.staticfiles import StaticFiles
+
 
 from app.database import Base, Database, DbService, Neo4jDatabase, Neo4jService
 from app.routers import auth, guest
@@ -42,6 +44,8 @@ async def lifespan(app: FastAPI):
     Neo4jDatabase.close()
 
 app = FastAPI(title="TheoForge API", lifespan=lifespan)
+
+app.mount("/static", StaticFiles(directory="frontend/dist", html=True), name="static")
 
 app.add_middleware(
     CORSMiddleware,
