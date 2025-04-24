@@ -55,7 +55,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(guest.router)
 
-@app.get("/")
+@app.get("/api")
 async def root():
     return {"message":"HELLO MONKEYS!"}
 
