@@ -47,3 +47,6 @@ pgadmin-data/
 
 # Fronend
 frontend/
+
+# macOS system files
+.DS_Store
