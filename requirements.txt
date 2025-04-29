@@ -49,7 +49,7 @@ starlette==0.36.3
 tomli==2.2.1
 typing_extensions==4.12.2
 uvicorn==0.27.1
-neo4j==5.16.0
+neo4j==5.18.0
 minio
 openai
 qdrant-client==1.7.3
