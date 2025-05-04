@@ -53,3 +53,4 @@ neo4j==5.18.0
 minio
 openai
 qdrant-client==1.7.3
+prometheus-fastapi-instrumentator

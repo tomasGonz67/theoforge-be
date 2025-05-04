@@ -6,6 +6,7 @@ import os
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 from app.operations.qdrant import qdrant_service
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.database import Base, Database, DbService, Neo4jDatabase, Neo4jService
 from app.routers import auth, guest, resource, neo4j, llm, text_cleaning
@@ -59,6 +60,9 @@ async def lifespan(app: FastAPI):
     logger.info("Qdrant client closed.")
 
 app = FastAPI(title="TheoForge API", lifespan=lifespan)
+
+# Instrument the app
+Instrumentator().instrument(app).expose(app)
 
 app.add_middleware(
     CORSMiddleware,
