@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import timedelta
 from app.core.security import hash_password  # ✅ Correct import
-
+from prometheus_client import Counter # Add Prometheus Counter import
 
 from app.schemas.user import UserCreate, UserResponse, UserUpdate, UserGeneralUpdate
 from app.operations.jwt_service import create_access_token
@@ -12,6 +12,10 @@ from app.routers.dependencies import get_current_user, get_db
 from app.operations.user import UserRepository, RegistrationService, AuthenticationService
 from settings.config import settings
 from app.models.user import User, SubscriptionPlan
+
+# Define Prometheus counters
+REGISTRATIONS_TOTAL = Counter('user_registrations_total', 'Total number of user registrations')
+LOGINS_TOTAL = Counter('user_logins_total', 'Total number of user logins')
 
 # Create a router for auth endpoints
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -38,6 +42,7 @@ async def register(
         registration_service = RegistrationService(user_repo)
         
         user = await registration_service.register_user(user_create.model_dump())
+        REGISTRATIONS_TOTAL.inc() # Increment registration counter
         return user
     except ValueError as e:
         raise HTTPException(
@@ -74,6 +79,7 @@ async def login(
         expires_delta=access_token_expires
     )
 
+    LOGINS_TOTAL.inc() # Increment login counter
     return {"access_token": access_token, "token_type": "bearer"}
 
 # Simple logout endpoint (MOVED TO AFTER LOGIN)
