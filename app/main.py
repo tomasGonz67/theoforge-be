@@ -1,16 +1,15 @@
 from fastapi import FastAPI
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
-import importlib
-import pkgutil
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+import logging
+from app.operations.qdrant import qdrant_service
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.database import Base, Database, DbService, Neo4jDatabase, Neo4jService
-from app.routers import auth, guest
+from app.routers import auth, guest, resource, neo4j, llm, text_cleaning
 
 # Get database URL from environment variable
 database_url = os.getenv("DATABASE_URL")
@@ -21,6 +20,10 @@ if database_url:
 neo4j_uri = os.getenv("NEO4J_URI")
 neo4j_user = os.getenv("NEO4J_USER")
 neo4j_password = os.getenv("NEO4J_PASSWORD")
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,12 +39,30 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"Failed to initialize Neo4j connection: {e}")
     
+    # Initialize Qdrant connection and collection
+    logger.info("Application startup: Initializing Qdrant connection and collection...")
+    try:
+        await qdrant_service.initialize_collection()
+        logger.info("Qdrant initialization complete.")
+    except Exception as e:
+        logger.error(f"Qdrant initialization failed: {e}")
+        # Depending on the application's needs, you might want to prevent startup
+        # For now, we log the error and continue
+    
     yield
     
     # Cleanup: close Neo4j connection
     Neo4jDatabase.close()
+    
+    # Close Qdrant client
+    logger.info("Application shutdown: Closing Qdrant client...")
+    await qdrant_service.close()
+    logger.info("Qdrant client closed.")
 
 app = FastAPI(title="TheoForge API", lifespan=lifespan)
+
+# Instrument the app
+Instrumentator().instrument(app).expose(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,12 +75,14 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(guest.router)
+app.include_router(resource.router)
+app.include_router(neo4j.router)
+app.include_router(llm.router)
+app.include_router(text_cleaning.router)
 
 @app.get("/")
 async def root():
-    return {"This is a test"}
-
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+    return {"message": "Hello World test"}
 
 @app.get("/health")
 async def health():
@@ -93,34 +116,6 @@ async def health():
         "database": db_status
     }
 
-@app.get("/neo4j/hello-world")
-def neo4j_hello_world():
-    """
-    Creates a node in Neo4j with a "Hello, World!" message and retrieves it.
-    This is a simple test to confirm Neo4j connectivity.
-    """
-    try:
-        # Create a node with a "Hello, World!" message
-        create_query = """
-        CREATE (message:Message {text: 'Hello, World!'})
-        RETURN message
-        """
-        Neo4jService.execute_query(create_query)
-        
-        # Retrieve the message
-        get_query = """
-        MATCH (message:Message)
-        WHERE message.text = 'Hello, World!'
-        RETURN message.text AS message
-        """
-        result = Neo4jService.execute_query(get_query)
-        
-        if result and len(result) > 0:
-            return {"message": result[0]["message"]}
-        else:
-            return {"error": "Message not found in Neo4j"}
-    except Exception as e:
-        return {"error": f"Neo4j operation failed: {str(e)}"}
 
 @app.get("/neo4j/health")
 def neo4j_health():
